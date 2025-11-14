@@ -1,12 +1,12 @@
 from fastapi import APIRouter, HTTPException, Depends, BackgroundTasks
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from typing import List
 import logging
 
 from ..db import get_db, SessionLocal
 from ..models import Job, LogFile, Rule, JobStatus
 from ..schemas import JobCreate, JobResponse
-from ..services.gemini_client import GeminiClient
+from ..services.groq_client import GroqClient
 from ..utils.file import read_log_sample
 from ..utils.validator import validate_xml_rule
 from datetime import datetime
@@ -18,10 +18,11 @@ router = APIRouter(prefix="/api/jobs", tags=["jobs"])
 def process_job_background(job_id: int, log_file_id: int):
     """Background task to process job and generate rule"""
     db = SessionLocal()
+    job = None
     try:
         logger.info(f"Processing job {job_id} for log file {log_file_id}")
         
-        # Update job status
+        # Update job status - use single query with refresh
         job = db.query(Job).filter(Job.id == job_id).first()
         if not job:
             logger.warning(f"Job {job_id} not found")
@@ -29,9 +30,10 @@ def process_job_background(job_id: int, log_file_id: int):
         
         job.status = JobStatus.PROCESSING
         db.commit()
+        db.refresh(job)
         logger.info(f"Job {job_id} status updated to PROCESSING")
         
-        # Get log file
+        # Get log file - use single query
         log_file = db.query(LogFile).filter(LogFile.id == log_file_id).first()
         if not log_file:
             logger.error(f"Log file {log_file_id} not found for job {job_id}")
@@ -59,8 +61,8 @@ def process_job_background(job_id: int, log_file_id: int):
         
         # Generate rule using AI client
         try:
-            gemini_client = GeminiClient()
-            rule_xml = gemini_client.generate_wazuh_rule(sample_lines)
+            groq_client = GroqClient()
+            rule_xml = groq_client.generate_wazuh_rule(sample_lines)
             logger.info(f"Rule generated successfully for job {job_id}")
         except Exception as e:
             logger.error(f"Error generating rule for job {job_id}: {str(e)}")
@@ -134,14 +136,25 @@ async def create_generation_job(
 
 @router.get("", response_model=List[JobResponse])
 async def list_jobs(db: Session = Depends(get_db)):
-    """List all jobs"""
-    jobs = db.query(Job).order_by(Job.created_at.desc()).all()
+    """List all jobs with optimized query"""
+    # Use eager loading to avoid N+1 queries
+    jobs = (
+        db.query(Job)
+        .options(joinedload(Job.log_file), joinedload(Job.rule))
+        .order_by(Job.created_at.desc())
+        .all()
+    )
     return jobs
 
 @router.get("/{job_id}", response_model=JobResponse)
 async def get_job(job_id: int, db: Session = Depends(get_db)):
-    """Get a specific job"""
-    job = db.query(Job).filter(Job.id == job_id).first()
+    """Get a specific job with related data"""
+    job = (
+        db.query(Job)
+        .options(joinedload(Job.log_file), joinedload(Job.rule))
+        .filter(Job.id == job_id)
+        .first()
+    )
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
     return job

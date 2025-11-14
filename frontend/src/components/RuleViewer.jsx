@@ -1,19 +1,39 @@
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import axios from 'axios'
-
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+import { API_BASE_URL } from '../constants/api'
+import { formatDate } from '../utils/format'
 
 function RuleViewer({ rule, onUpdate }) {
   const [editing, setEditing] = useState(false)
-  const [ruleXml, setRuleXml] = useState(rule?.rule_xml || '')
+  const [ruleXml, setRuleXml] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState(null)
   const [success, setSuccess] = useState(null)
 
-  if (!rule) {
+  // Sync ruleXml state when rule prop changes
+  useEffect(() => {
+    console.log('RuleViewer: rule prop changed', rule)
+    if (rule && rule.rule_xml) {
+      console.log('RuleViewer: Setting rule XML, length:', rule.rule_xml.length)
+      setRuleXml(rule.rule_xml)
+      setEditing(false) // Reset editing state when new rule is loaded
+      setError(null)
+      setSuccess(null)
+    } else {
+      // Reset when rule is cleared or doesn't have rule_xml
+      console.log('RuleViewer: Clearing rule or rule has no rule_xml')
+      setRuleXml('')
+      setEditing(false)
+      setError(null)
+      setSuccess(null)
+    }
+  }, [rule])
+
+  // Show empty state if no rule or rule has no content
+  if (!rule || !rule.rule_xml) {
     return (
       <div className="relative">
-        <div className="bg-slate-900/80 backdrop-blur-xl border-2 border-blue-600/40 rounded-3xl transition-all duration-300 hover:border-blue-500/60 min-h-[400px]">
+        <div className="bg-slate-900/40 backdrop-blur-sm border-2 border-blue-600/40 rounded-3xl transition-all duration-300 hover:border-blue-500/60 min-h-[400px]">
           <div className="flex flex-col items-center justify-center py-16 text-center">
             <div className="w-24 h-24 rounded-2xl bg-gradient-to-br from-blue-500/10 to-cyan-500/10 border border-blue-400/20 flex items-center justify-center mb-6">
               <svg className="w-12 h-12 text-blue-400/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -28,24 +48,31 @@ function RuleViewer({ rule, onUpdate }) {
     )
   }
 
-  const handleEdit = () => {
+  const clearMessages = useCallback(() => {
+    setError(null)
+    setSuccess(null)
+  }, [])
+
+  const handleEdit = useCallback(() => {
     setEditing(true)
     setRuleXml(rule.rule_xml)
-    setError(null)
-    setSuccess(null)
-  }
+    clearMessages()
+  }, [rule?.rule_xml, clearMessages])
 
-  const handleCancel = () => {
+  const handleCancel = useCallback(() => {
     setEditing(false)
     setRuleXml(rule.rule_xml)
-    setError(null)
-    setSuccess(null)
-  }
+    clearMessages()
+  }, [rule?.rule_xml, clearMessages])
 
-  const handleSave = async () => {
+  const handleSave = useCallback(async () => {
+    if (!rule || !rule.id) {
+      setError('No rule selected to save')
+      return
+    }
+    
     setSaving(true)
-    setError(null)
-    setSuccess(null)
+    clearMessages()
 
     try {
       await axios.put(`${API_BASE_URL}/api/rules/${rule.id}`, {
@@ -59,10 +86,16 @@ function RuleViewer({ rule, onUpdate }) {
     } finally {
       setSaving(false)
     }
-  }
+  }, [rule, ruleXml, clearMessages, onUpdate])
 
-  const handleDownload = () => {
-    const blob = new Blob([ruleXml], { type: 'application/xml' })
+  const handleDownload = useCallback(() => {
+    const xmlToDownload = ruleXml || rule?.rule_xml
+    if (!xmlToDownload || !rule?.id) {
+      setError('No rule content to download')
+      return
+    }
+    
+    const blob = new Blob([xmlToDownload], { type: 'application/xml' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
@@ -71,19 +104,29 @@ function RuleViewer({ rule, onUpdate }) {
     a.click()
     document.body.removeChild(a)
     URL.revokeObjectURL(url)
-  }
+  }, [ruleXml, rule])
 
-  const handleCopy = () => {
-    navigator.clipboard.writeText(ruleXml)
-    setSuccess('Rule XML copied to clipboard!')
-    setTimeout(() => setSuccess(null), 3000)
-  }
+  const handleCopy = useCallback(async () => {
+    const xmlToCopy = ruleXml || rule?.rule_xml
+    if (!xmlToCopy) {
+      setError('No rule content to copy')
+      return
+    }
+    
+    try {
+      await navigator.clipboard.writeText(xmlToCopy)
+      setSuccess('Rule XML copied to clipboard!')
+      setTimeout(() => setSuccess(null), 3000)
+    } catch (err) {
+      setError('Failed to copy to clipboard')
+    }
+  }, [ruleXml, rule])
 
   return (
     <div className="relative">
-      <div className="bg-slate-900/80 backdrop-blur-xl border-2 border-blue-600/40 rounded-3xl transition-all duration-300 hover:border-blue-500/60">
+      <div className="bg-slate-900/40 backdrop-blur-sm border-2 border-blue-600/40 rounded-3xl transition-all duration-300 hover:border-blue-500/60">
         {/* Header */}
-        <div className="p-6 border-b border-blue-700/30 bg-slate-900/60 backdrop-blur-sm rounded-t-3xl">
+        <div className="p-6 border-b border-blue-700/30 bg-slate-900/30 backdrop-blur-sm rounded-t-3xl">
           <div className="flex justify-between items-center">
             <div className="flex items-center space-x-4">
               <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500/20 to-cyan-500/20 border border-blue-400/30 flex items-center justify-center">
@@ -202,7 +245,7 @@ function RuleViewer({ rule, onUpdate }) {
                 </div>
                 <div>
                   <p className="text-xs text-gray-400">Updated</p>
-                  <p className="text-sm font-semibold text-blue-300">{new Date(rule.updated_at).toLocaleString()}</p>
+                  <p className="text-sm font-semibold text-blue-300">{formatDate(rule.updated_at)}</p>
                 </div>
               </div>
             </div>
@@ -230,7 +273,7 @@ function RuleViewer({ rule, onUpdate }) {
             </div>
           )}
 
-          <div className="border border-blue-700/30 rounded-xl overflow-hidden bg-slate-900/50">
+          <div className="border border-blue-700/30 rounded-xl overflow-hidden bg-slate-900/30">
             {editing ? (
               <textarea
                 value={ruleXml}
@@ -240,7 +283,9 @@ function RuleViewer({ rule, onUpdate }) {
               />
             ) : (
               <pre className="p-6 bg-slate-900 overflow-x-auto">
-                <code className="text-sm font-mono text-blue-300 leading-relaxed">{ruleXml}</code>
+                <code className="text-sm font-mono text-blue-300 leading-relaxed whitespace-pre-wrap break-words">
+                  {ruleXml || (rule && rule.rule_xml) || 'Loading rule...'}
+                </code>
               </pre>
             )}
           </div>

@@ -12,7 +12,8 @@ services:
       - SECRET_KEY=${SECRET_KEY:-supersecret}
       - MAX_UPLOAD_SIZE_MB=${MAX_UPLOAD_SIZE_MB:-10}
       - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-http://localhost:5173}
-      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - GROQ_API_KEY=${GROQ_API_KEY}
+      - GROQ_MODEL=${GROQ_MODEL:-meta-llama/llama-4-scout-17b-16e-instruct}
     volumes:
       - ./backend/uploads:/app/uploads
       - ./backend/data:/app

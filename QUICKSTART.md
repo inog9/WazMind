@@ -3,7 +3,7 @@
 ## Prerequisites
 
 - Docker & Docker Compose installed
-- Gemini API Key (get it from [Google AI Studio](https://makersuite.google.com/app/apikey))
+- Groq API Key (get it from [Groq Console](https://console.groq.com/))
 
 ## Setup Steps
 
@@ -17,9 +17,10 @@
    cp .env.example .env
    ```
 
-3. **Edit `.env` and add your Gemini API key:**
+3. **Edit `.env` and add your Groq API key:**
    ```bash
-   GEMINI_API_KEY=your-actual-api-key-here
+   GROQ_API_KEY=your-actual-api-key-here
+   GROQ_MODEL=meta-llama/llama-4-scout-17b-16e-instruct
    ```
 
 4. **Start the application:**
@@ -75,7 +76,7 @@
    ```bash
    # Di root directory (recommended):
    cp .env.example .env
-   # Edit .env dan tambahkan GEMINI_API_KEY Anda
+   # Edit .env dan tambahkan GROQ_API_KEY Anda
    
    # Atau di backend/:
    cp ../.env.example backend/.env
@@ -118,7 +119,7 @@
 
 ## Troubleshooting
 
-- **API Key Error:** Make sure `GEMINI_API_KEY` is set correctly in `.env`
+- **API Key Error:** Make sure `GROQ_API_KEY` is set correctly in `.env`
 - **Port already in use:** Change ports in `docker-compose.yml`
 - **Database errors:** Delete `backend/data/app.db` and restart
 

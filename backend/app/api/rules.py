@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException, Depends
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from typing import List
 
 from ..db import get_db
@@ -12,22 +12,37 @@ router = APIRouter(prefix="/api/rules", tags=["rules"])
 
 @router.get("", response_model=List[RuleResponse])
 async def list_rules(db: Session = Depends(get_db)):
-    """List all generated rules"""
-    rules = db.query(Rule).order_by(Rule.created_at.desc()).all()
+    """List all generated rules with optimized query"""
+    rules = (
+        db.query(Rule)
+        .options(joinedload(Rule.job))
+        .order_by(Rule.created_at.desc())
+        .all()
+    )
     return rules
 
 @router.get("/{rule_id}", response_model=RuleResponse)
 async def get_rule(rule_id: int, db: Session = Depends(get_db)):
-    """Get a specific rule"""
-    rule = db.query(Rule).filter(Rule.id == rule_id).first()
+    """Get a specific rule with related job data"""
+    rule = (
+        db.query(Rule)
+        .options(joinedload(Rule.job))
+        .filter(Rule.id == rule_id)
+        .first()
+    )
     if not rule:
         raise HTTPException(status_code=404, detail="Rule not found")
     return rule
 
 @router.get("/job/{job_id}", response_model=RuleResponse)
 async def get_rule_by_job(job_id: int, db: Session = Depends(get_db)):
-    """Get rule by job ID"""
-    rule = db.query(Rule).filter(Rule.job_id == job_id).first()
+    """Get rule by job ID with optimized query"""
+    rule = (
+        db.query(Rule)
+        .options(joinedload(Rule.job))
+        .filter(Rule.job_id == job_id)
+        .first()
+    )
     if not rule:
         raise HTTPException(status_code=404, detail="Rule not found for this job")
     return rule

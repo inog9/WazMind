@@ -39,11 +39,12 @@ Panduan lengkap untuk menjalankan WazMind tanpa Docker untuk development lokal.
    # Option 1: Di root directory (recommended)
    cd ..  # Kembali ke root wazmind/
    cp .env.example .env
-   # Edit .env dan tambahkan GEMINI_API_KEY Anda
+   # Edit .env dan tambahkan GROQ_API_KEY Anda
    
    # Option 2: Di backend directory
    cat > .env << EOF
-   GEMINI_API_KEY=your-gemini-api-key-here
+   GROQ_API_KEY=your-groq-api-key-here
+   GROQ_MODEL=meta-llama/llama-4-scout-17b-16e-instruct
    DATABASE_URL=sqlite:///./app.db
    UPLOAD_DIR=./uploads
    SECRET_KEY=supersecret
@@ -119,9 +120,10 @@ Panduan lengkap untuk menjalankan WazMind tanpa Docker untuk development lokal.
    # Restart server (database akan dibuat otomatis)
    ```
 
-4. **Gemini API Error:**
-   - Pastikan `GEMINI_API_KEY` sudah diisi di `.env`
+4. **Groq API Error:**
+   - Pastikan `GROQ_API_KEY` sudah diisi di `.env`
    - Pastikan API key valid dan memiliki quota
+   - Check model availability di [Groq Console](https://console.groq.com/)
 
 ### Frontend Issues
 

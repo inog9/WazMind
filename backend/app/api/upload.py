@@ -85,8 +85,13 @@ async def upload_log_file(
 
 @router.get("", response_model=List[LogFileResponse])
 async def list_uploaded_files(db: Session = Depends(get_db)):
-    """List all uploaded log files"""
-    files = db.query(LogFile).order_by(LogFile.uploaded_at.desc()).all()
+    """List all uploaded log files with optimized query"""
+    files = (
+        db.query(LogFile)
+        .options(joinedload(LogFile.jobs))
+        .order_by(LogFile.uploaded_at.desc())
+        .all()
+    )
     return files
 
 @router.get("/{file_id}", response_model=LogFileResponse)
@@ -96,6 +101,21 @@ async def get_uploaded_file(file_id: int, db: Session = Depends(get_db)):
     if not file:
         raise HTTPException(status_code=404, detail="File not found")
     return file
+
+@router.get("/{file_id}/sample")
+async def get_file_sample(file_id: int, max_lines: int = 100, db: Session = Depends(get_db)):
+    """Get sample lines from uploaded file for pattern detection"""
+    log_file = db.query(LogFile).filter(LogFile.id == file_id).first()
+    if not log_file:
+        raise HTTPException(status_code=404, detail="File not found")
+    
+    try:
+        from ..utils.file import read_log_sample
+        lines = read_log_sample(log_file.file_path, max_lines=max_lines)
+        return {"lines": lines, "total_lines": len(lines)}
+    except Exception as e:
+        logger.error(f"Error reading file sample: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error reading file: {str(e)}")
 
 
 @router.delete("/{file_id}", status_code=204)

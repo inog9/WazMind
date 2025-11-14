@@ -1,2 +1,114 @@
-/* Additional custom styles if needed */
+/* Theme-aware utility classes using CSS variables */
+:root {
+  --text-primary: rgb(243 244 246);
+  --text-secondary: rgb(229 231 235);
+  --text-tertiary: rgb(209 213 219);
+  --text-quaternary: rgb(156 163 175);
+  --bg-primary: rgba(15, 23, 42, 0.4);
+  --bg-secondary: rgba(30, 41, 59, 0.4);
+  --bg-tertiary: rgba(30, 41, 59, 0.3);
+  --border-primary: rgba(37, 99, 235, 0.4);
+}
 
+[data-theme="light"] {
+  --text-primary: rgb(15 23 42);
+  --text-secondary: rgb(30 41 59);
+  --text-tertiary: rgb(51 65 85);
+  --text-quaternary: rgb(71 85 105);
+  --bg-primary: rgba(248, 250, 252, 0.8);
+  --bg-secondary: rgba(241, 245, 249, 0.9);
+  --bg-tertiary: rgba(241, 245, 249, 0.7);
+  --border-primary: rgba(37, 99, 235, 0.5);
+}
+
+/* Text colors */
+[data-theme="light"] .text-gray-100 {
+  color: var(--text-primary) !important;
+}
+
+[data-theme="light"] .text-gray-200 {
+  color: var(--text-secondary) !important;
+}
+
+[data-theme="light"] .text-gray-300 {
+  color: var(--text-tertiary) !important;
+}
+
+[data-theme="light"] .text-gray-400 {
+  color: var(--text-quaternary) !important;
+}
+
+[data-theme="light"] .text-blue-100 {
+  color: rgb(30 58 138) !important;
+}
+
+[data-theme="light"] .text-blue-200 {
+  color: rgb(37 99 235) !important;
+}
+
+[data-theme="light"] .text-blue-300 {
+  color: rgb(59 130 246) !important;
+}
+
+[data-theme="light"] .text-blue-400 {
+  color: rgb(96 165 250) !important;
+}
+
+/* Background colors for light theme */
+[data-theme="light"] .bg-slate-900\/40 {
+  background-color: var(--bg-primary) !important;
+}
+
+[data-theme="light"] .bg-slate-800\/40 {
+  background-color: var(--bg-secondary) !important;
+}
+
+[data-theme="light"] .bg-slate-800\/30 {
+  background-color: var(--bg-tertiary) !important;
+}
+
+[data-theme="light"] .bg-slate-700\/50 {
+  background-color: rgba(226, 232, 240, 0.8) !important;
+}
+
+[data-theme="light"] .bg-slate-900\/30 {
+  background-color: rgba(248, 250, 252, 0.6) !important;
+}
+
+/* File card specific styles for light theme */
+[data-theme="light"] .from-slate-800\/60 {
+  background-color: rgba(241, 245, 249, 0.9) !important;
+}
+
+[data-theme="light"] .to-slate-900\/60 {
+  background-color: rgba(248, 250, 252, 0.9) !important;
+}
+
+[data-theme="light"] .text-gray-100 {
+  color: rgb(15 23 42) !important;
+}
+
+[data-theme="light"] .text-gray-300 {
+  color: rgb(51 65 85) !important;
+}
+
+[data-theme="light"] .text-blue-200 {
+  color: rgb(37 99 235) !important;
+}
+
+[data-theme="light"] .text-red-200 {
+  color: rgb(220 38 38) !important;
+}
+
+/* Border colors for light theme */
+[data-theme="light"] .border-blue-600\/40 {
+  border-color: var(--border-primary) !important;
+}
+
+[data-theme="light"] .border-blue-700\/30 {
+  border-color: rgba(29, 78, 216, 0.4) !important;
+}
+
+[data-theme="light"] .border-blue-500\/60 {
+  border-color: rgba(59, 130, 246, 0.7) !important;
+}

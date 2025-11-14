@@ -18,7 +18,9 @@ if "sqlite" in DATABASE_URL:
 engine = create_engine(
     DATABASE_URL,
     connect_args={"check_same_thread": False} if "sqlite" in DATABASE_URL else {},
-    echo=False  # Set to True for SQL query debugging
+    echo=False,  # Set to True for SQL query debugging
+    pool_pre_ping=True,  # Verify connections before using
+    pool_recycle=3600,  # Recycle connections after 1 hour (for non-SQLite)
 )
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)

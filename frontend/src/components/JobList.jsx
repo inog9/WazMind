@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useRef } from 'react'
 import { getStatusColor, getStatusIcon } from '../utils/jobStatus'
 import { formatDate } from '../utils/format'
 
-function JobList({ jobs, onRefresh, onViewRule }) {
+function JobList({ jobs, pagination, onRefresh, onViewRule }) {
   const [completedJobIds, setCompletedJobIds] = useState(new Set())
   const [showToast, setShowToast] = useState(null)
   const previousJobsRef = useRef([])
@@ -14,15 +14,22 @@ function JobList({ jobs, onRefresh, onViewRule }) {
     )
   }, [jobs])
 
-  // Detect newly completed jobs
+  // Detect newly completed jobs - optimized
   useEffect(() => {
-    const previousJobIds = new Set(previousJobsRef.current.map(j => j.id))
-    const currentJobIds = new Set(jobs.map(j => j.id))
+    if (previousJobsRef.current.length === 0) {
+      previousJobsRef.current = jobs
+      return
+    }
+    
+    // Create maps for faster lookup
+    const previousJobMap = new Map(previousJobsRef.current.map(j => [j.id, j]))
     
     // Find newly completed jobs
     const newlyCompleted = jobs.filter(job => {
-      const wasActive = previousJobsRef.current.find(pj => pj.id === job.id)?.status === 'pending' || 
-                       previousJobsRef.current.find(pj => pj.id === job.id)?.status === 'processing'
+      const previousJob = previousJobMap.get(job.id)
+      if (!previousJob) return false
+      
+      const wasActive = previousJob.status === 'pending' || previousJob.status === 'processing'
       const isCompleted = job.status === 'completed'
       return wasActive && isCompleted && !completedJobIds.has(job.id)
     })
@@ -68,7 +75,7 @@ function JobList({ jobs, onRefresh, onViewRule }) {
       // Start polling
       if (intervalRef.current === null) {
         intervalRef.current = setInterval(() => {
-          onRefresh()
+          onRefresh(pagination?.page || 1)
         }, 2000) // Poll every 2 seconds for faster updates
       }
     } else {
@@ -151,11 +158,11 @@ function JobList({ jobs, onRefresh, onViewRule }) {
                 </p>
               </div>
               <div className="px-3 py-1.5 bg-blue-900/40 border border-blue-600/40 rounded-lg text-xs text-blue-300 font-semibold">
-                {jobs.length}
+                {pagination?.total || jobs.length}
               </div>
             </div>
                 <button
-                  onClick={onRefresh}
+                  onClick={() => onRefresh(pagination?.page || 1)}
                   className="flex items-center space-x-2 px-4 py-2 border border-blue-600/40 rounded-xl text-blue-300 hover:bg-slate-700/80 hover:border-blue-500/60 transition-all duration-200"
                   style={{ backgroundColor: 'var(--bg-primary)' }}
                 >
@@ -269,6 +276,62 @@ function JobList({ jobs, onRefresh, onViewRule }) {
                   </div>
                 </div>
               )})}
+            </div>
+          )}
+          
+          {/* Pagination Controls */}
+          {pagination && pagination.total_pages > 1 && (
+            <div className="flex items-center justify-between mt-6 pt-6 border-t border-blue-700/30">
+              <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+                Showing {((pagination.page - 1) * pagination.limit) + 1} to {Math.min(pagination.page * pagination.limit, pagination.total)} of {pagination.total} jobs
+              </div>
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={() => onRefresh(pagination.page - 1)}
+                  disabled={pagination.page === 1}
+                  className="px-4 py-2 border border-blue-500/50 text-blue-200 hover:bg-blue-900/50 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  style={{ backgroundColor: 'var(--bg-primary)' }}
+                >
+                  Previous
+                </button>
+                <div className="flex items-center space-x-1">
+                  {Array.from({ length: Math.min(5, pagination.total_pages) }, (_, i) => {
+                    let pageNum
+                    if (pagination.total_pages <= 5) {
+                      pageNum = i + 1
+                    } else if (pagination.page <= 3) {
+                      pageNum = i + 1
+                    } else if (pagination.page >= pagination.total_pages - 2) {
+                      pageNum = pagination.total_pages - 4 + i
+                    } else {
+                      pageNum = pagination.page - 2 + i
+                    }
+                    
+                    return (
+                      <button
+                        key={pageNum}
+                        onClick={() => onRefresh(pageNum)}
+                        className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                          pagination.page === pageNum
+                            ? 'bg-blue-600 text-white'
+                            : 'border border-blue-500/50 text-blue-200 hover:bg-blue-900/50'
+                        }`}
+                        style={pagination.page !== pageNum ? { backgroundColor: 'var(--bg-primary)' } : {}}
+                      >
+                        {pageNum}
+                      </button>
+                    )
+                  })}
+                </div>
+                <button
+                  onClick={() => onRefresh(pagination.page + 1)}
+                  disabled={pagination.page >= pagination.total_pages}
+                  className="px-4 py-2 border border-blue-500/50 text-blue-200 hover:bg-blue-900/50 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  style={{ backgroundColor: 'var(--bg-primary)' }}
+                >
+                  Next
+                </button>
+              </div>
             </div>
           )}
         </div>

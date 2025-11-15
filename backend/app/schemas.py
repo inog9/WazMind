@@ -1,7 +1,19 @@
 from pydantic import BaseModel
 from datetime import datetime
-from typing import Optional
+from typing import Optional, List, Generic, TypeVar
 from .models import JobStatus
+
+T = TypeVar('T')
+
+class PaginatedResponse(BaseModel, Generic[T]):
+    items: List[T]
+    total: int
+    page: int
+    limit: int
+    total_pages: int
+    
+    class Config:
+        from_attributes = True
 
 class LogFileCreate(BaseModel):
     filename: str

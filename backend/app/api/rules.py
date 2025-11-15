@@ -5,10 +5,11 @@ from pydantic import BaseModel
 import zipfile
 import io
 from fastapi.responses import StreamingResponse
+import math
 
 from ..db import get_db
 from ..models import Rule, Job
-from ..schemas import RuleResponse, RuleUpdate
+from ..schemas import RuleResponse, RuleUpdate, PaginatedResponse
 from ..utils.validator import validate_xml_rule
 from datetime import datetime
 
@@ -17,16 +18,45 @@ router = APIRouter(prefix="/api/rules", tags=["rules"])
 class BulkDeleteRequest(BaseModel):
     rule_ids: List[int]
 
-@router.get("", response_model=List[RuleResponse])
-async def list_rules(db: Session = Depends(get_db)):
-    """List all generated rules with optimized query"""
+@router.get("", response_model=PaginatedResponse[RuleResponse])
+async def list_rules(
+    page: int = Query(1, ge=1, description="Page number (1-indexed)"),
+    limit: int = Query(10, ge=1, le=100, description="Items per page"),
+    db: Session = Depends(get_db)
+):
+    """List generated rules with pagination"""
+    from ..utils.cache import cache
+    
+    # Calculate offset
+    offset = (page - 1) * limit
+    
+    # Cache total count for 30 seconds
+    cache_key = "rule_count"
+    total = cache.get(cache_key)
+    if total is None:
+        total = db.query(Rule).count()
+        cache.set(cache_key, total, ttl=30)
+    
+    # Get paginated rules
     rules = (
         db.query(Rule)
         .options(joinedload(Rule.job))
         .order_by(Rule.created_at.desc())
+        .offset(offset)
+        .limit(limit)
         .all()
     )
-    return rules
+    
+    # Calculate total pages
+    total_pages = math.ceil(total / limit) if total > 0 else 0
+    
+    return {
+        "items": rules,
+        "total": total,
+        "page": page,
+        "limit": limit,
+        "total_pages": total_pages
+    }
 
 @router.get("/{rule_id}", response_model=RuleResponse)
 async def get_rule(rule_id: int, db: Session = Depends(get_db)):
@@ -66,27 +96,38 @@ async def update_rule(
     if not rule:
         raise HTTPException(status_code=404, detail="Rule not found")
     
-    # Validate XML
-    is_valid, error = validate_xml_rule(rule_update.rule_xml)
+    # Validate XML and get sanitized version
+    is_valid, error, sanitized_xml = validate_xml_rule(rule_update.rule_xml)
     if not is_valid:
-        raise HTTPException(status_code=400, detail=error)
+        from ..utils.sanitizer import sanitize_error_message
+        raise HTTPException(status_code=400, detail=sanitize_error_message(error))
     
-    # Update rule
-    rule.rule_xml = rule_update.rule_xml
+    # Update rule with sanitized XML
+    rule.rule_xml = sanitized_xml
     rule.updated_at = datetime.utcnow()
     db.commit()
     db.refresh(rule)
+    
+    # Invalidate cache (rule count might change if this affects listing)
+    from ..utils.cache import cache
+    cache.delete("rule_count")
     
     return rule
 
 @router.post("/bulk-delete", status_code=200)
 async def bulk_delete_rules(request: BulkDeleteRequest, db: Session = Depends(get_db)):
     """Bulk delete multiple rules"""
-    rule_ids = request.rule_ids
+    from ..utils.sanitizer import sanitize_list_of_ids
+    
+    # Validate and sanitize rule IDs
+    is_valid, error, sanitized_ids = sanitize_list_of_ids(request.rule_ids)
+    if not is_valid:
+        raise HTTPException(status_code=400, detail=error)
+    
     deleted_count = 0
     errors = []
     
-    for rule_id in rule_ids:
+    for rule_id in sanitized_ids:
         try:
             rule = db.query(Rule).filter(Rule.id == rule_id).first()
             if not rule:
@@ -100,16 +141,28 @@ async def bulk_delete_rules(request: BulkDeleteRequest, db: Session = Depends(ge
     
     db.commit()
     
+    # Invalidate cache when rules are deleted
+    from ..utils.cache import cache
+    cache.delete("rule_count")
+    
     return {
         "deleted_count": deleted_count,
-        "total_requested": len(rule_ids),
+        "total_requested": len(sanitized_ids),
         "errors": errors
     }
 
 @router.get("/bulk-export")
 async def bulk_export_rules(rule_ids: List[int] = Query(...), db: Session = Depends(get_db)):
     """Export multiple rules as ZIP file"""
-    rules = db.query(Rule).filter(Rule.id.in_(rule_ids)).all()
+    from ..utils.sanitizer import sanitize_list_of_ids
+    
+    # Validate and sanitize rule IDs
+    is_valid, error, sanitized_ids = sanitize_list_of_ids(rule_ids)
+    if not is_valid:
+        raise HTTPException(status_code=400, detail=error)
+    
+    # Use parameterized query with IN clause (SQLAlchemy handles this safely)
+    rules = db.query(Rule).filter(Rule.id.in_(sanitized_ids)).all()
     
     if not rules:
         raise HTTPException(status_code=404, detail="No rules found")

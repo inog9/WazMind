@@ -69,8 +69,13 @@ def process_job_with_retry(job_id: int, log_file_id: int, db: Session, retry_cou
         if elapsed > JOB_TIMEOUT_SECONDS:
             raise TimeoutError(f"Job timeout after {JOB_TIMEOUT_SECONDS} seconds")
         
-        # Read log sample
-        sample_lines = read_log_sample(log_file.file_path)
+        # Read log sample (with path validation)
+        import os
+        upload_dir = os.getenv("UPLOAD_DIR", "./uploads")
+        if not os.path.isabs(upload_dir):
+            upload_dir = os.path.abspath(upload_dir)
+        
+        sample_lines = read_log_sample(log_file.file_path, allowed_base_dir=upload_dir)
         if not sample_lines:
             raise ValueError("Log file is empty or could not be read")
         logger.info(f"Read {len(sample_lines)} sample lines from log file")
@@ -90,15 +95,16 @@ def process_job_with_retry(job_id: int, log_file_id: int, db: Session, retry_cou
         if elapsed > JOB_TIMEOUT_SECONDS:
             raise TimeoutError(f"Job timeout after {JOB_TIMEOUT_SECONDS} seconds")
         
-        # Validate rule
-        is_valid, error = validate_xml_rule(rule_xml)
+        # Validate rule and get sanitized version
+        is_valid, error, sanitized_xml = validate_xml_rule(rule_xml)
         if not is_valid:
-            raise ValueError(f"Rule validation failed: {error}")
+            from ..utils.sanitizer import sanitize_error_message
+            raise ValueError(f"Rule validation failed: {sanitize_error_message(error)}")
         
-        # Save rule
+        # Save rule with sanitized XML
         rule = Rule(
             job_id=job_id,
-            rule_xml=rule_xml
+            rule_xml=sanitized_xml
         )
         db.add(rule)
         
@@ -106,6 +112,11 @@ def process_job_with_retry(job_id: int, log_file_id: int, db: Session, retry_cou
         job.status = JobStatus.COMPLETED
         job.completed_at = datetime.utcnow()
         db.commit()
+        
+        # Invalidate cache when job status changes
+        from ..utils.cache import cache
+        cache.delete("job_count")
+        
         logger.info(f"Job {job_id} completed successfully")
         return True
         
@@ -114,11 +125,20 @@ def process_job_with_retry(job_id: int, log_file_id: int, db: Session, retry_cou
         job.status = JobStatus.FAILED
         job.error_message = f"Job timeout after {JOB_TIMEOUT_SECONDS} seconds"
         db.commit()
+        
+        # Invalidate cache when job status changes
+        from ..utils.cache import cache
+        cache.delete("job_count")
+        
         return False
         
     except Exception as e:
         error_msg = str(e)
         logger.error(f"Error processing job {job_id} (retry {retry_count}): {error_msg}", exc_info=True)
+        
+        # Sanitize error message before storing
+        from ..utils.sanitizer import sanitize_error_message
+        sanitized_error = sanitize_error_message(error_msg)
         
         # Check if we should retry
         if retry_count < MAX_RETRIES:
@@ -128,8 +148,13 @@ def process_job_with_retry(job_id: int, log_file_id: int, db: Session, retry_cou
         else:
             # Max retries reached
             job.status = JobStatus.FAILED
-            job.error_message = f"Failed after {MAX_RETRIES} retries: {error_msg}"
+            job.error_message = f"Failed after {MAX_RETRIES} retries: {sanitized_error}"
             db.commit()
+            
+            # Invalidate cache when job status changes
+            from ..utils.cache import cache
+            cache.delete("job_count")
+            
             logger.error(f"Job {job_id} failed after {MAX_RETRIES} retries")
             return False
 

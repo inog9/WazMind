@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, useRef, memo } from 'react'
 import { detectPatterns } from '../utils/patternDetector'
 import { apiClient } from '../utils/api'
 
@@ -7,14 +7,13 @@ function PatternDetector({ fileId, filePath, onPatternsDetected }) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const [expandedPattern, setExpandedPattern] = useState(null)
+  const loadedFileIdRef = useRef(null)
 
-  useEffect(() => {
-    if (fileId && filePath) {
-      loadPatterns()
+  const loadPatterns = useCallback(async () => {
+    // Prevent duplicate loads for same file
+    if (loadedFileIdRef.current === fileId && patterns) {
+      return
     }
-  }, [fileId, filePath])
-
-  const loadPatterns = async () => {
     setLoading(true)
     setError(null)
     
@@ -34,6 +33,7 @@ function PatternDetector({ fileId, filePath, onPatternsDetected }) {
 
       const detected = detectPatterns(logLines)
       setPatterns(detected)
+      loadedFileIdRef.current = fileId
       
       // Notify parent component
       if (onPatternsDetected) {
@@ -45,7 +45,14 @@ function PatternDetector({ fileId, filePath, onPatternsDetected }) {
     } finally {
       setLoading(false)
     }
-  }
+  }, [fileId, onPatternsDetected])
+
+  useEffect(() => {
+    if (fileId && fileId !== loadedFileIdRef.current) {
+      loadPatterns()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fileId]) // Only depend on fileId to prevent unnecessary re-runs
 
   const getColorClasses = (color) => {
     const colors = {

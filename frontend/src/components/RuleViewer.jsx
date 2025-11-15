@@ -12,16 +12,13 @@ function RuleViewer({ rule, onUpdate }) {
 
   // Sync ruleXml state when rule prop changes
   useEffect(() => {
-    console.log('RuleViewer: rule prop changed', rule)
     if (rule && rule.rule_xml) {
-      console.log('RuleViewer: Setting rule XML, length:', rule.rule_xml.length)
       setRuleXml(rule.rule_xml)
       setEditing(false) // Reset editing state when new rule is loaded
       setError(null)
       setSuccess(null)
     } else {
       // Reset when rule is cleared or doesn't have rule_xml
-      console.log('RuleViewer: Clearing rule or rule has no rule_xml')
       setRuleXml('')
       setEditing(false)
       setError(null)

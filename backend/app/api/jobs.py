@@ -1,11 +1,12 @@
-from fastapi import APIRouter, HTTPException, Depends, BackgroundTasks, Request
+from fastapi import APIRouter, HTTPException, Depends, BackgroundTasks, Request, Query
 from sqlalchemy.orm import Session, joinedload
 from typing import List
 import logging
+import math
 
 from ..db import get_db, SessionLocal
 from ..models import Job, LogFile, Rule, JobStatus
-from ..schemas import JobCreate, JobResponse
+from ..schemas import JobCreate, JobResponse, PaginatedResponse
 from ..utils.job_processor import process_job_with_retry
 from datetime import datetime
 
@@ -57,22 +58,54 @@ async def create_generation_job(
     db.commit()
     db.refresh(job)
     
+    # Invalidate cache when new job is created
+    from ..utils.cache import cache
+    cache.delete("job_count")
+    
     # Start background task
     background_tasks.add_task(process_job_background, job.id, job_data.log_file_id)
     
     return job
 
-@router.get("", response_model=List[JobResponse])
-async def list_jobs(db: Session = Depends(get_db)):
-    """List all jobs with optimized query"""
-    # Use eager loading to avoid N+1 queries
+@router.get("", response_model=PaginatedResponse[JobResponse])
+async def list_jobs(
+    page: int = Query(1, ge=1, description="Page number (1-indexed)"),
+    limit: int = Query(10, ge=1, le=100, description="Items per page"),
+    db: Session = Depends(get_db)
+):
+    """List jobs with pagination"""
+    from ..utils.cache import cache
+    
+    # Calculate offset
+    offset = (page - 1) * limit
+    
+    # Cache total count for 10 seconds (jobs change frequently)
+    cache_key = "job_count"
+    total = cache.get(cache_key)
+    if total is None:
+        total = db.query(Job).count()
+        cache.set(cache_key, total, ttl=10)
+    
+    # Get paginated jobs with eager loading to avoid N+1 queries
     jobs = (
         db.query(Job)
         .options(joinedload(Job.log_file), joinedload(Job.rule))
         .order_by(Job.created_at.desc())
+        .offset(offset)
+        .limit(limit)
         .all()
     )
-    return jobs
+    
+    # Calculate total pages
+    total_pages = math.ceil(total / limit) if total > 0 else 0
+    
+    return {
+        "items": jobs,
+        "total": total,
+        "page": page,
+        "limit": limit,
+        "total_pages": total_pages
+    }
 
 @router.get("/{job_id}", response_model=JobResponse)
 async def get_job(job_id: int, db: Session = Depends(get_db)):

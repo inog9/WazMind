@@ -3,7 +3,7 @@ import toast from 'react-hot-toast'
 import { apiClient } from '../utils/api'
 import { formatDate } from '../utils/format'
 
-function RulesList({ rules, onViewRule, onRefresh }) {
+function RulesList({ rules, pagination, onViewRule, onRefresh }) {
   const [selectedRules, setSelectedRules] = useState(new Set())
   const [isSelectMode, setIsSelectMode] = useState(false)
   const [deleting, setDeleting] = useState(false)
@@ -22,12 +22,12 @@ function RulesList({ rules, onViewRule, onRefresh }) {
   }, [])
 
   const handleSelectAll = useCallback(() => {
-    if (selectedRules.size === rules.length) {
+    if (selectedRules.size === rules.length && rules.length > 0) {
       setSelectedRules(new Set())
     } else {
       setSelectedRules(new Set(rules.map(r => r.id)))
     }
-  }, [selectedRules, rules])
+  }, [selectedRules.size, rules]) // Only depend on size and rules array reference
 
   const handleBulkDelete = useCallback(async () => {
     if (selectedRules.size === 0) {
@@ -43,7 +43,7 @@ function RulesList({ rules, onViewRule, onRefresh }) {
       toast.success(`Deleted ${response.data.deleted_count} rule(s) successfully`)
       setSelectedRules(new Set())
       setIsSelectMode(false)
-      if (onRefresh) onRefresh()
+      if (onRefresh) onRefresh(pagination.page)
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Error deleting rules')
     } finally {
@@ -96,7 +96,7 @@ function RulesList({ rules, onViewRule, onRefresh }) {
           </div>
           <h2 className="text-2xl font-bold text-blue-400">Generated Rules</h2>
           <span className="bg-blue-900/50 text-blue-300 px-3 py-1 rounded-full text-sm font-semibold border border-blue-600/50">
-            {rules.length}
+            {pagination?.total || rules.length}
           </span>
           {isSelectMode && selectedRules.size > 0 && (
             <span className="bg-green-900/50 text-green-300 px-3 py-1 rounded-full text-sm font-semibold border border-green-600/50">
@@ -202,6 +202,62 @@ function RulesList({ rules, onViewRule, onRefresh }) {
           </div>
         ))}
       </div>
+      
+      {/* Pagination Controls */}
+      {pagination && pagination.total_pages > 1 && (
+        <div className="flex items-center justify-between mt-6 pt-6 border-t border-blue-700/30">
+          <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+            Showing {((pagination.page - 1) * pagination.limit) + 1} to {Math.min(pagination.page * pagination.limit, pagination.total)} of {pagination.total} rules
+          </div>
+          <div className="flex items-center space-x-2">
+            <button
+              onClick={() => onRefresh(pagination.page - 1)}
+              disabled={pagination.page === 1}
+              className="px-4 py-2 border border-blue-500/50 text-blue-200 hover:bg-blue-900/50 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              style={{ backgroundColor: 'var(--bg-primary)' }}
+            >
+              Previous
+            </button>
+            <div className="flex items-center space-x-1">
+              {Array.from({ length: Math.min(5, pagination.total_pages) }, (_, i) => {
+                let pageNum
+                if (pagination.total_pages <= 5) {
+                  pageNum = i + 1
+                } else if (pagination.page <= 3) {
+                  pageNum = i + 1
+                } else if (pagination.page >= pagination.total_pages - 2) {
+                  pageNum = pagination.total_pages - 4 + i
+                } else {
+                  pageNum = pagination.page - 2 + i
+                }
+                
+                return (
+                  <button
+                    key={pageNum}
+                    onClick={() => onRefresh(pageNum)}
+                    className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                      pagination.page === pageNum
+                        ? 'bg-blue-600 text-white'
+                        : 'border border-blue-500/50 text-blue-200 hover:bg-blue-900/50'
+                    }`}
+                    style={pagination.page !== pageNum ? { backgroundColor: 'var(--bg-primary)' } : {}}
+                  >
+                    {pageNum}
+                  </button>
+                )
+              })}
+            </div>
+            <button
+              onClick={() => onRefresh(pagination.page + 1)}
+              disabled={pagination.page >= pagination.total_pages}
+              className="px-4 py-2 border border-blue-500/50 text-blue-200 hover:bg-blue-900/50 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              style={{ backgroundColor: 'var(--bg-primary)' }}
+            >
+              Next
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

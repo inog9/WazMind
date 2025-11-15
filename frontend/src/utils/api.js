@@ -29,7 +29,6 @@ async function retryRequest(config, retryCount = 0) {
     
     if (shouldRetry && retryCount < MAX_RETRIES) {
       const delay = RETRY_DELAY * Math.pow(2, retryCount) // Exponential backoff
-      console.log(`Retrying request (attempt ${retryCount + 1}/${MAX_RETRIES}) after ${delay}ms...`)
       
       await new Promise(resolve => setTimeout(resolve, delay))
       return retryRequest(config, retryCount + 1)

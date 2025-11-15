@@ -1,10 +1,10 @@
-import { useState, useRef, useCallback } from 'react'
+import { useState, useRef, useCallback, useMemo } from 'react'
 import toast from 'react-hot-toast'
 import { apiClient } from '../utils/api'
 import { formatFileSize, formatDate } from '../utils/format'
 import PatternDetector from './PatternDetector'
 
-function FileUpload({ onUpload, onJobCreated, files }) {
+function FileUpload({ onUpload, onJobCreated, files, pagination, onPageChange }) {
   const [file, setFile] = useState(null)
   const [uploading, setUploading] = useState(false)
   const [generating, setGenerating] = useState(false)
@@ -20,6 +20,11 @@ function FileUpload({ onUpload, onJobCreated, files }) {
   const [dragOverIndex, setDragOverIndex] = useState(null)
   const [reorderedFiles, setReorderedFiles] = useState(null)
   const fileInputRef = useRef(null)
+
+  // Memoize display files to prevent unnecessary recalculations
+  const displayFiles = useMemo(() => {
+    return reorderedFiles || files
+  }, [reorderedFiles, files])
 
   const clearMessages = useCallback(() => {
     setUploadError(null)
@@ -378,7 +383,7 @@ function FileUpload({ onUpload, onJobCreated, files }) {
                 Uploaded Files
               </h2>
               <span className="bg-blue-900/50 text-blue-300 px-3 py-1 rounded-full text-sm font-semibold border border-blue-600/50">
-                {files.length}
+                {pagination?.total || files.length}
               </span>
               {isSelectMode && selectedFiles.size > 0 && (
                 <span className="bg-green-900/50 text-green-300 px-3 py-1 rounded-full text-sm font-semibold border border-green-600/50">
@@ -427,7 +432,7 @@ function FileUpload({ onUpload, onJobCreated, files }) {
             </div>
           </div>
           <div className="space-y-4">
-                 {(reorderedFiles || files).map((f, index) => (
+                 {displayFiles.map((f, index) => (
                    <div 
                      key={f.id} 
                      className="space-y-3"
@@ -547,6 +552,62 @@ function FileUpload({ onUpload, onJobCreated, files }) {
             </div>
           ))}
           </div>
+          
+          {/* Pagination Controls */}
+          {pagination && pagination.total_pages > 1 && (
+            <div className="flex items-center justify-between mt-6 pt-6 border-t border-blue-700/30">
+              <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+                Showing {((pagination.page - 1) * pagination.limit) + 1} to {Math.min(pagination.page * pagination.limit, pagination.total)} of {pagination.total} files
+              </div>
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={() => onPageChange && onPageChange(pagination.page - 1)}
+                  disabled={pagination.page === 1}
+                  className="px-4 py-2 border border-blue-500/50 text-blue-200 hover:bg-blue-900/50 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  style={{ backgroundColor: 'var(--bg-primary)' }}
+                >
+                  Previous
+                </button>
+                <div className="flex items-center space-x-1">
+                  {Array.from({ length: Math.min(5, pagination.total_pages) }, (_, i) => {
+                    let pageNum
+                    if (pagination.total_pages <= 5) {
+                      pageNum = i + 1
+                    } else if (pagination.page <= 3) {
+                      pageNum = i + 1
+                    } else if (pagination.page >= pagination.total_pages - 2) {
+                      pageNum = pagination.total_pages - 4 + i
+                    } else {
+                      pageNum = pagination.page - 2 + i
+                    }
+                    
+                    return (
+                      <button
+                        key={pageNum}
+                        onClick={() => onPageChange && onPageChange(pageNum)}
+                        className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                          pagination.page === pageNum
+                            ? 'bg-blue-600 text-white'
+                            : 'border border-blue-500/50 text-blue-200 hover:bg-blue-900/50'
+                        }`}
+                        style={pagination.page !== pageNum ? { backgroundColor: 'var(--bg-primary)' } : {}}
+                      >
+                        {pageNum}
+                      </button>
+                    )
+                  })}
+                </div>
+                <button
+                  onClick={() => onPageChange && onPageChange(pagination.page + 1)}
+                  disabled={pagination.page >= pagination.total_pages}
+                  className="px-4 py-2 border border-blue-500/50 text-blue-200 hover:bg-blue-900/50 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  style={{ backgroundColor: 'var(--bg-primary)' }}
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>

@@ -13,9 +13,17 @@ def validate_file_extension(filename: str, allowed_extensions: list[str] = None)
     if allowed_extensions is None:
         allowed_extensions = [".log", ".txt", ".json", ".csv"]
     
+    if not filename:
+        return False, "Filename cannot be empty"
+    
     ext = os.path.splitext(filename)[1].lower()
     if ext not in allowed_extensions:
         return False, f"File extension {ext} is not allowed. Allowed: {', '.join(allowed_extensions)}"
+    
+    # Additional security: check for path traversal attempts
+    if ".." in filename or "/" in filename or "\\" in filename:
+        return False, "Invalid filename: path traversal detected"
+    
     return True, None
 
 def validate_xml_rule(rule_xml: str) -> tuple[bool, Optional[str]]:

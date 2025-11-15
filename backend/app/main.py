@@ -1,11 +1,17 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
 from .db import engine, Base
 from .api import upload, jobs, rules
 import os
 import logging
 from pathlib import Path
 from dotenv import load_dotenv
+from datetime import datetime
+from sqlalchemy import text
 
 # Configure logging
 logging.basicConfig(
@@ -37,11 +43,27 @@ if not env_loaded:
 # Create database tables
 Base.metadata.create_all(bind=engine)
 
+# Run migration to add new columns if needed
+try:
+    import sys
+    from pathlib import Path
+    backend_dir = Path(__file__).parent.parent
+    sys.path.insert(0, str(backend_dir))
+    from migrate_db import migrate_db
+    migrate_db()
+except Exception as e:
+    logger.warning(f"Migration check failed (this is OK if columns already exist): {str(e)}")
+
 app = FastAPI(
     title="WazMind API",
     description="AI-powered log intelligence for automated Wazuh rule generation",
     version="1.0.0"
 )
+
+# Rate limiting - using in-memory storage for simplicity
+limiter = Limiter(key_func=get_remote_address, storage_uri="memory://", default_limits=["1000/hour"])
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # CORS configuration
 ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "http://localhost:5173").split(",")
@@ -69,5 +91,26 @@ async def root():
 
 @app.get("/health")
 async def health():
-    return {"status": "healthy"}
+    """Health check endpoint with database connectivity test"""
+    try:
+        # Test database connection
+        with engine.connect() as conn:
+            conn.execute(text("SELECT 1"))
+        
+        return {
+            "status": "healthy",
+            "timestamp": datetime.utcnow().isoformat(),
+            "database": "connected"
+        }
+    except Exception as e:
+        logger.error(f"Health check failed: {str(e)}")
+        return JSONResponse(
+            status_code=503,
+            content={
+                "status": "unhealthy",
+                "timestamp": datetime.utcnow().isoformat(),
+                "database": "disconnected",
+                "error": str(e)
+            }
+        )
 

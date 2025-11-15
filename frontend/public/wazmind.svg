@@ -1,0 +1,153 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Smooth gradients -->
+    <linearGradient id="leftGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1e40af;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#3b82f6;stop-opacity:1" />
+    </linearGradient>
+    
+    <linearGradient id="rightGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0891b2;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#22d3ee;stop-opacity:1" />
+    </linearGradient>
+    
+    <!-- Border glow -->
+    <radialGradient id="borderGlow" cx="50%" cy="50%">
+      <stop offset="0%" style="stop-color:#3b82f6;stop-opacity:0.3" />
+      <stop offset="100%" style="stop-color:#06b6d4;stop-opacity:0.1" />
+    </radialGradient>
+    
+    <!-- Glow filter -->
+    <filter id="softGlow">
+      <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  
+  <!-- Background circle with subtle glow -->
+  <circle cx="512" cy="512" r="400" fill="url(#borderGlow)"/>
+  
+  <!-- Left hemisphere - Clean brain shape -->
+  <ellipse cx="400" cy="512" rx="280" ry="280" fill="url(#leftGrad)"/>
+  
+  <!-- Right hemisphere -->
+  <ellipse cx="624" cy="512" rx="280" ry="280" fill="url(#rightGrad)"/>
+  
+  <!-- Brain division line -->
+  <line x1="512" y1="232" x2="512" y2="792" stroke="#ffffff" stroke-width="3" opacity="0.3"/>
+  
+  <!-- Circuit grid - Left side -->
+  <g stroke="#ffffff" stroke-width="2" fill="none" opacity="0.6">
+    <!-- Horizontal lines -->
+    <line x1="200" y1="380" x2="480" y2="380"/>
+    <line x1="200" y1="420" x2="480" y2="420"/>
+    <line x1="200" y1="460" x2="480" y2="460"/>
+    <line x1="200" y1="500" x2="480" y2="500"/>
+    <line x1="200" y1="540" x2="480" y2="540"/>
+    <line x1="200" y1="580" x2="480" y2="580"/>
+    <line x1="200" y1="620" x2="480" y2="620"/>
+    <line x1="200" y1="660" x2="480" y2="660"/>
+    
+    <!-- Vertical connectors -->
+    <line x1="280" y1="360" x2="280" y2="680"/>
+    <line x1="360" y1="360" x2="360" y2="680"/>
+    <line x1="440" y1="360" x2="440" y2="680"/>
+  </g>
+  
+  <!-- Circuit nodes - Left -->
+  <g fill="#ffffff" opacity="0.8">
+    <circle cx="280" cy="380" r="3"/>
+    <circle cx="360" cy="380" r="3"/>
+    <circle cx="440" cy="380" r="3"/>
+    <circle cx="280" cy="420" r="3"/>
+    <circle cx="360" cy="420" r="3"/>
+    <circle cx="440" cy="420" r="3"/>
+    <circle cx="280" cy="460" r="3"/>
+    <circle cx="360" cy="460" r="3"/>
+    <circle cx="440" cy="460" r="3"/>
+    <circle cx="280" cy="500" r="3"/>
+    <circle cx="360" cy="500" r="3"/>
+    <circle cx="440" cy="500" r="3"/>
+    <circle cx="280" cy="540" r="3"/>
+    <circle cx="360" cy="540" r="3"/>
+    <circle cx="440" cy="540" r="3"/>
+    <circle cx="280" cy="580" r="3"/>
+    <circle cx="360" cy="580" r="3"/>
+    <circle cx="440" cy="580" r="3"/>
+    <circle cx="280" cy="620" r="3"/>
+    <circle cx="360" cy="620" r="3"/>
+    <circle cx="440" cy="620" r="3"/>
+    <circle cx="280" cy="660" r="3"/>
+    <circle cx="360" cy="660" r="3"/>
+    <circle cx="440" cy="660" r="3"/>
+  </g>
+  
+  <!-- Circuit grid - Right side -->
+  <g stroke="#ffffff" stroke-width="2" fill="none" opacity="0.6">
+    <!-- Horizontal lines -->
+    <line x1="544" y1="380" x2="824" y2="380"/>
+    <line x1="544" y1="420" x2="824" y2="420"/>
+    <line x1="544" y1="460" x2="824" y2="460"/>
+    <line x1="544" y1="500" x2="824" y2="500"/>
+    <line x1="544" y1="540" x2="824" y2="540"/>
+    <line x1="544" y1="580" x2="824" y2="580"/>
+    <line x1="544" y1="620" x2="824" y2="620"/>
+    <line x1="544" y1="660" x2="824" y2="660"/>
+    
+    <!-- Vertical connectors -->
+    <line x1="624" y1="360" x2="624" y2="680"/>
+    <line x1="704" y1="360" x2="704" y2="680"/>
+    <line x1="784" y1="360" x2="784" y2="680"/>
+  </g>
+  
+  <!-- Circuit nodes - Right -->
+  <g fill="#ffffff" opacity="0.8">
+    <circle cx="624" cy="380" r="3"/>
+    <circle cx="704" cy="380" r="3"/>
+    <circle cx="784" cy="380" r="3"/>
+    <circle cx="624" cy="420" r="3"/>
+    <circle cx="704" cy="420" r="3"/>
+    <circle cx="784" cy="420" r="3"/>
+    <circle cx="624" cy="460" r="3"/>
+    <circle cx="704" cy="460" r="3"/>
+    <circle cx="784" cy="460" r="3"/>
+    <circle cx="624" cy="500" r="3"/>
+    <circle cx="704" cy="500" r="3"/>
+    <circle cx="784" cy="500" r="3"/>
+    <circle cx="624" cy="540" r="3"/>
+    <circle cx="704" cy="540" r="3"/>
+    <circle cx="784" cy="540" r="3"/>
+    <circle cx="624" cy="580" r="3"/>
+    <circle cx="704" cy="580" r="3"/>
+    <circle cx="784" cy="580" r="3"/>
+    <circle cx="624" cy="620" r="3"/>
+    <circle cx="704" cy="620" r="3"/>
+    <circle cx="784" cy="620" r="3"/>
+    <circle cx="624" cy="660" r="3"/>
+    <circle cx="704" cy="660" r="3"/>
+    <circle cx="784" cy="660" r="3"/>
+  </g>
+  
+  <!-- Central connection hub -->
+  <circle cx="512" cy="512" r="12" fill="#ffffff" opacity="0.9" filter="url(#softGlow)"/>
+  <circle cx="512" cy="512" r="6" fill="#22d3ee" opacity="0.8"/>
+  
+  <!-- Connecting pathways -->
+  <g stroke="#ffffff" stroke-width="2" fill="none" opacity="0.5" stroke-linecap="round">
+    <path d="M 480 460 Q 496 480, 512 500 Q 528 480, 544 460"/>
+    <path d="M 480 500 Q 496 520, 512 540 Q 528 520, 544 500"/>
+    <path d="M 480 540 Q 496 560, 512 580 Q 528 560, 544 540"/>
+    <line x1="480" y1="420" x2="544" y2="420"/>
+    <line x1="480" y1="580" x2="544" y2="580"/>
+  </g>
+  
+  <!-- Outer border - Clean and modern -->
+  <circle cx="512" cy="512" r="400" fill="none" stroke="#3b82f6" stroke-width="6" opacity="0.4"/>
+  <circle cx="512" cy="512" r="395" fill="none" stroke="#ffffff" stroke-width="3" opacity="0.8"/>
+  
+  <!-- Inner accent ring -->
+  <circle cx="512" cy="512" r="385" fill="none" stroke="#06b6d4" stroke-width="1" opacity="0.3"/>
+</svg>

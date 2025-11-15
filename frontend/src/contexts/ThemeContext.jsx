@@ -2,6 +2,8 @@ import { createContext, useContext, useState, useEffect } from 'react'
 
 const ThemeContext = createContext()
 
+const THEMES = ['dark', 'light']
+
 export function ThemeProvider({ children }) {
   const [theme, setTheme] = useState(() => {
     // Get theme from localStorage or default to 'dark'
@@ -16,11 +18,19 @@ export function ThemeProvider({ children }) {
   }, [theme])
 
   const toggleTheme = () => {
-    setTheme(prev => prev === 'dark' ? 'light' : 'dark')
+    const currentIndex = THEMES.indexOf(theme)
+    const nextIndex = (currentIndex + 1) % THEMES.length
+    setTheme(THEMES[nextIndex])
+  }
+
+  const setThemeDirect = (newTheme) => {
+    if (THEMES.includes(newTheme)) {
+      setTheme(newTheme)
+    }
   }
 
   return (
-    <ThemeContext.Provider value={{ theme, toggleTheme }}>
+    <ThemeContext.Provider value={{ theme, themes: THEMES, toggleTheme, setTheme: setThemeDirect }}>
       {children}
     </ThemeContext.Provider>
   )

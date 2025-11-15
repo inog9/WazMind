@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react'
 import { detectPatterns } from '../utils/patternDetector'
-import axios from 'axios'
-import { API_BASE_URL } from '../constants/api'
+import { apiClient } from '../utils/api'
 
 function PatternDetector({ fileId, filePath, onPatternsDetected }) {
   const [patterns, setPatterns] = useState(null)
@@ -21,7 +20,7 @@ function PatternDetector({ fileId, filePath, onPatternsDetected }) {
     
     try {
       // Fetch log sample from backend
-      const sampleResponse = await axios.get(`${API_BASE_URL}/api/upload/${fileId}/sample`, {
+      const sampleResponse = await apiClient.get(`/api/upload/${fileId}/sample`, {
         params: { max_lines: 100 }
       })
 

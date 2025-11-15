@@ -1,6 +1,7 @@
-from fastapi import APIRouter, UploadFile, File, HTTPException, Depends, Response
+from fastapi import APIRouter, UploadFile, File, HTTPException, Depends, Response, Request, Body
 from sqlalchemy.orm import Session, joinedload
 from typing import List
+from pydantic import BaseModel
 import os
 import logging
 
@@ -10,9 +11,16 @@ from ..schemas import LogFileResponse
 from ..utils.file import save_uploaded_file, delete_file
 from ..utils.validator import validate_file_size, validate_file_extension
 
+class BulkDeleteRequest(BaseModel):
+    file_ids: List[int]
+
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/upload", tags=["upload"])
+
+# Get limiter from app state for rate limiting
+def get_limiter(request: Request):
+    return request.app.state.limiter
 
 # Get upload directory - default to ./uploads for manual development
 UPLOAD_DIR = os.getenv("UPLOAD_DIR", "./uploads")
@@ -23,10 +31,17 @@ MAX_UPLOAD_SIZE_MB = int(os.getenv("MAX_UPLOAD_SIZE_MB", "10"))
 
 @router.post("", response_model=LogFileResponse, status_code=201)
 async def upload_log_file(
+    request: Request,
     file: UploadFile = File(...),
     db: Session = Depends(get_db)
 ):
-    """Upload a log file for analysis"""
+    """Upload a log file for analysis - Rate limited to 10/minute"""
+    # Rate limiting check
+    limiter = get_limiter(request)
+    @limiter.limit("10/minute")
+    async def _rate_check(request: Request):
+        pass
+    await _rate_check(request)
     
     logger.info(f"Received upload request for file: {file.filename}")
     
@@ -117,6 +132,53 @@ async def get_file_sample(file_id: int, max_lines: int = 100, db: Session = Depe
         logger.error(f"Error reading file sample: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error reading file: {str(e)}")
 
+
+@router.post("/bulk-delete", status_code=200)
+async def bulk_delete_files(request: BulkDeleteRequest, db: Session = Depends(get_db)):
+    """Bulk delete multiple files"""
+    file_ids = request.file_ids
+    deleted_count = 0
+    errors = []
+    
+    for file_id in file_ids:
+        try:
+            log_file = (
+                db.query(LogFile)
+                .options(joinedload(LogFile.jobs).joinedload(Job.rule))
+                .filter(LogFile.id == file_id)
+                .first()
+            )
+            
+            if not log_file:
+                errors.append(f"File {file_id} not found")
+                continue
+            
+            # Delete related jobs and rules
+            for job in list(log_file.jobs):
+                if job.rule:
+                    db.delete(job.rule)
+                db.delete(job)
+            
+            # Remove physical file
+            if log_file.file_path:
+                try:
+                    delete_file(log_file.file_path)
+                except Exception as e:
+                    logger.warning(f"Error deleting file from disk: {str(e)}")
+            
+            db.delete(log_file)
+            deleted_count += 1
+        except Exception as e:
+            errors.append(f"Error deleting file {file_id}: {str(e)}")
+            logger.error(f"Error in bulk delete for file {file_id}: {str(e)}")
+    
+    db.commit()
+    
+    return {
+        "deleted_count": deleted_count,
+        "total_requested": len(file_ids),
+        "errors": errors
+    }
 
 @router.delete("/{file_id}", status_code=204)
 async def delete_uploaded_file(file_id: int, db: Session = Depends(get_db)):

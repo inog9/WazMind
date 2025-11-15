@@ -133,9 +133,9 @@ function JobList({ jobs, onRefresh, onViewRule }) {
         </div>
       )}
       
-      <div className="bg-slate-900/40 backdrop-blur-sm border-2 border-blue-600/40 rounded-3xl transition-all duration-300 hover:border-blue-500/60 min-h-[400px]">
+      <div className="backdrop-blur-sm border-2 border-blue-600/40 rounded-3xl transition-all duration-300 hover:border-blue-500/60 min-h-[400px]" style={{ backgroundColor: 'var(--bg-primary)' }}>
         {/* Header */}
-        <div className="p-6 border-b border-blue-700/30 bg-slate-900/30 backdrop-blur-sm rounded-t-3xl">
+        <div className="p-6 border-b border-blue-700/30 backdrop-blur-sm rounded-t-3xl" style={{ backgroundColor: 'var(--bg-secondary)' }}>
           <div className="flex justify-between items-center">
             <div className="flex items-center space-x-4">
               <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500/20 to-cyan-500/20 border border-blue-400/30 flex items-center justify-center">
@@ -154,15 +154,16 @@ function JobList({ jobs, onRefresh, onViewRule }) {
                 {jobs.length}
               </div>
             </div>
-            <button
-              onClick={onRefresh}
-              className="flex items-center space-x-2 px-4 py-2 bg-slate-800/80 border border-blue-600/40 rounded-xl text-blue-300 hover:bg-slate-700/80 hover:border-blue-500/60 transition-all duration-200"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-              </svg>
-              <span className="text-sm font-medium">Refresh</span>
-            </button>
+                <button
+                  onClick={onRefresh}
+                  className="flex items-center space-x-2 px-4 py-2 border border-blue-600/40 rounded-xl text-blue-300 hover:bg-slate-700/80 hover:border-blue-500/60 transition-all duration-200"
+                  style={{ backgroundColor: 'var(--bg-primary)' }}
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                  <span className="text-sm font-medium">Refresh</span>
+                </button>
           </div>
         </div>
 

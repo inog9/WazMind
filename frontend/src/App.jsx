@@ -1,40 +1,64 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
-import axios from 'axios'
+import toast from 'react-hot-toast'
+import { apiClient } from './utils/api'
 import FileUpload from './components/FileUpload'
 import JobList from './components/JobList'
 import RuleViewer from './components/RuleViewer'
+import RulesList from './components/RulesList'
 import ThemeToggle from './components/ThemeToggle'
-import { API_BASE_URL } from './constants/api'
+import LoadingSkeleton from './components/LoadingSkeleton'
 import './App.css'
 
 function App() {
   const [files, setFiles] = useState([])
   const [jobs, setJobs] = useState([])
+  const [rules, setRules] = useState([])
   const [selectedRule, setSelectedRule] = useState(null)
   const rulesSectionRef = useRef(null)
 
+  const [loading, setLoading] = useState(true)
+
   const fetchFiles = useCallback(async () => {
     try {
-      const response = await axios.get(`${API_BASE_URL}/api/upload`)
+      const response = await apiClient.get('/api/upload')
       setFiles(response.data)
     } catch (error) {
       console.error('Error fetching files:', error)
+      toast.error('Failed to load files. Please try again.')
     }
   }, [])
 
   const fetchJobs = useCallback(async () => {
     try {
-      const response = await axios.get(`${API_BASE_URL}/api/jobs`)
+      const response = await apiClient.get('/api/jobs')
       setJobs(response.data)
     } catch (error) {
       console.error('Error fetching jobs:', error)
+      toast.error('Failed to load jobs. Please try again.')
+    }
+  }, [])
+
+  const fetchRules = useCallback(async () => {
+    try {
+      const response = await apiClient.get('/api/rules')
+      setRules(response.data)
+    } catch (error) {
+      console.error('Error fetching rules:', error)
+      toast.error('Failed to load rules. Please try again.')
     }
   }, [])
 
   useEffect(() => {
-    fetchFiles()
-    fetchJobs()
-  }, [fetchFiles, fetchJobs])
+    const loadData = async () => {
+      setLoading(true)
+      try {
+        await Promise.all([fetchFiles(), fetchJobs(), fetchRules()])
+      } finally {
+        setLoading(false)
+      }
+    }
+    loadData()
+  }, [fetchFiles, fetchJobs, fetchRules])
 
   const handleFileUpload = useCallback(() => {
     fetchFiles()
@@ -46,20 +70,16 @@ function App() {
 
   const handleViewRule = useCallback(async (jobId) => {
     try {
-      console.log(`Fetching rule for job ${jobId}...`)
-      // Clear previous rule first to show loading state
       setSelectedRule(null)
+      toast.loading('Loading rule...', { id: 'loading-rule' })
       
-      const response = await axios.get(`${API_BASE_URL}/api/rules/job/${jobId}`)
-      console.log('Rule fetched successfully:', response.data)
+      const response = await apiClient.get(`/api/rules/job/${jobId}`)
       
-      // Set the rule data
       setSelectedRule(response.data)
+      toast.success('Rule loaded successfully', { id: 'loading-rule' })
       
-      // Force a small delay to ensure state update
       await new Promise(resolve => setTimeout(resolve, 50))
       
-      // Scroll to rules section
       setTimeout(() => {
         if (rulesSectionRef.current) {
           rulesSectionRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' })
@@ -67,10 +87,9 @@ function App() {
       }, 200)
     } catch (error) {
       console.error('Error fetching rule:', error)
-      console.error('Error details:', error.response?.data || error.message)
       const errorMessage = error.response?.data?.detail || error.message || 'Rule not found or not yet generated'
-      alert(`Error: ${errorMessage}`)
-      setSelectedRule(null) // Clear on error
+      toast.error(errorMessage, { id: 'loading-rule' })
+      setSelectedRule(null)
     }
   }, [])
 
@@ -131,8 +150,8 @@ function App() {
               </div>
               <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
-              <div className="w-14 h-14 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-2xl flex items-center justify-center shadow-xl shadow-blue-700/30 ring-2 ring-blue-400/40">
-                <span className="text-2xl">🧠</span>
+              <div className="w-14 h-14 rounded-2xl flex items-center justify-center shadow-xl shadow-blue-700/30 ring-2 ring-blue-400/40 overflow-hidden">
+                <img src="/wazmind.svg" alt="WazMind Logo" className="w-full h-full object-contain" />
               </div>
               <div>
                 <p className="text-sm uppercase tracking-[0.4em] text-blue-300/70">WazMind</p>
@@ -176,7 +195,7 @@ function App() {
               </div>
             </div>
 
-            <div className="bg-slate-900/30 border border-blue-700/40 rounded-2xl p-6 shadow-2xl shadow-blue-900/30 backdrop-blur-sm">
+            <div className="border border-blue-700/40 rounded-2xl p-6 shadow-2xl shadow-blue-900/30 backdrop-blur-sm" style={{ backgroundColor: 'var(--bg-primary)' }}>
               <p className="text-sm uppercase tracking-[0.35em] text-blue-300/70 mb-4">Quick Insight</p>
               <div className="space-y-5">
                 <div className="flex justify-between items-center">
@@ -202,32 +221,56 @@ function App() {
       </header>
 
       <main className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-32 space-y-10 pt-8" style={{ minHeight: 'calc(100vh - 200px)' }}>
-        {/* Upload Section */}
-        <section>
-          <FileUpload
-            onUpload={handleFileUpload}
-            onJobCreated={handleJobCreated}
-            files={files}
-          />
-        </section>
+        {loading ? (
+          <div className="space-y-10">
+            <LoadingSkeleton type="file" />
+            <LoadingSkeleton type="job" />
+            <LoadingSkeleton type="rule" />
+          </div>
+        ) : (
+          <>
+            {/* Upload Section */}
+            <section>
+              <FileUpload
+                onUpload={handleFileUpload}
+                onJobCreated={handleJobCreated}
+                files={files}
+              />
+            </section>
 
-        {/* Jobs Section */}
-        <section data-section="jobs">
-          <JobList
-            jobs={jobs}
-            onRefresh={fetchJobs}
-            onViewRule={handleViewRule}
-          />
-        </section>
+            {/* Jobs Section */}
+            <section data-section="jobs">
+              <JobList
+                jobs={jobs}
+                onRefresh={fetchJobs}
+                onViewRule={handleViewRule}
+              />
+            </section>
 
-        {/* Rules Section */}
-        <section ref={rulesSectionRef}>
-          <RuleViewer
-            key={selectedRule?.id || 'no-rule'}
-            rule={selectedRule}
-            onUpdate={fetchJobs}
-          />
-        </section>
+            {/* Rules List Section */}
+            {rules.length > 0 && (
+              <section>
+                <RulesList
+                  rules={rules}
+                  onViewRule={handleViewRule}
+                  onRefresh={fetchRules}
+                />
+              </section>
+            )}
+
+            {/* Rules Section */}
+            <section ref={rulesSectionRef}>
+              <RuleViewer
+                key={selectedRule?.id || 'no-rule'}
+                rule={selectedRule}
+                onUpdate={() => {
+                  fetchJobs()
+                  fetchRules()
+                }}
+              />
+            </section>
+          </>
+        )}
       </main>
     </div>
   )

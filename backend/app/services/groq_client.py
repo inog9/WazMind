@@ -67,7 +67,11 @@ class GroqClient:
     def generate_wazuh_rule(self, sample_lines: List[str]) -> str:
         """Generate Wazuh rule from log samples using Groq API"""
         
-        sample_text = "\n".join(sample_lines[:50])  # Limit to 50 lines
+        # Limit to 50 lines and ensure we have content
+        if not sample_lines:
+            raise ValueError("No log lines provided for rule generation")
+        
+        sample_text = "\n".join(sample_lines[:50])  # Limit to 50 lines for token efficiency
         
         prompt = f"""You are a Wazuh rule creation expert.
 

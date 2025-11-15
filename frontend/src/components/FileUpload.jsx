@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback } from 'react'
-import axios from 'axios'
-import { API_BASE_URL } from '../constants/api'
+import toast from 'react-hot-toast'
+import { apiClient } from '../utils/api'
 import { formatFileSize, formatDate } from '../utils/format'
 import PatternDetector from './PatternDetector'
 
@@ -14,6 +14,11 @@ function FileUpload({ onUpload, onJobCreated, files }) {
   const [isDragging, setIsDragging] = useState(false)
   const [selectedFileId, setSelectedFileId] = useState(null)
   const [detectedPatterns, setDetectedPatterns] = useState(null)
+  const [selectedFiles, setSelectedFiles] = useState(new Set())
+  const [isSelectMode, setIsSelectMode] = useState(false)
+  const [draggedIndex, setDraggedIndex] = useState(null)
+  const [dragOverIndex, setDragOverIndex] = useState(null)
+  const [reorderedFiles, setReorderedFiles] = useState(null)
   const fileInputRef = useRef(null)
 
   const clearMessages = useCallback(() => {
@@ -60,23 +65,24 @@ function FileUpload({ onUpload, onJobCreated, files }) {
       const formData = new FormData()
       formData.append('file', file)
 
-      const response = await axios.post(`${API_BASE_URL}/api/upload`, formData, {
+      const response = await apiClient.post('/api/upload', formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
       })
 
-          setUploadSuccess(`File uploaded successfully! File ID: ${response.data.id}`)
-          setSelectedFileId(response.data.id) // Show pattern detector for newly uploaded file
-          setFile(null)
-          if (fileInputRef.current) {
-            fileInputRef.current.value = ''
-          }
-          onUpload()
+      toast.success(`File uploaded successfully! File ID: ${response.data.id}`)
+      setUploadSuccess(`File uploaded successfully! File ID: ${response.data.id}`)
+      setSelectedFileId(response.data.id) // Show pattern detector for newly uploaded file
+      setFile(null)
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ''
+      }
+      onUpload()
     } catch (error) {
-      setUploadError(
-        error.response?.data?.detail || 'Error uploading file'
-      )
+      const errorMsg = error.response?.data?.detail || 'Error uploading file'
+      setUploadError(errorMsg)
+      toast.error(errorMsg)
     } finally {
       setUploading(false)
     }
@@ -86,10 +92,10 @@ function FileUpload({ onUpload, onJobCreated, files }) {
     setGenerating(true)
     clearMessages()
     try {
-      const response = await axios.post(`${API_BASE_URL}/api/jobs/generate`, {
+      const response = await apiClient.post('/api/jobs/generate', {
         log_file_id: fileId,
       })
-      setUploadSuccess(`✅ Rule generation job #${response.data.id} created! Processing in background...`)
+      toast.success(`Rule generation job #${response.data.id} created! Processing in background...`)
       onJobCreated()
       
       // Auto-scroll to jobs section after a short delay
@@ -100,9 +106,9 @@ function FileUpload({ onUpload, onJobCreated, files }) {
         }
       }, 500)
     } catch (error) {
-      setUploadError(
-        error.response?.data?.detail || 'Error creating generation job'
-      )
+      const errorMsg = error.response?.data?.detail || 'Error creating generation job'
+      setUploadError(errorMsg)
+      toast.error(errorMsg)
     } finally {
       setGenerating(false)
     }
@@ -113,17 +119,91 @@ function FileUpload({ onUpload, onJobCreated, files }) {
     clearMessages()
 
     try {
-      await axios.delete(`${API_BASE_URL}/api/upload/${fileId}`)
-      setUploadSuccess(`File "${filename}" deleted.`)
+      await apiClient.delete(`/api/upload/${fileId}`)
+      toast.success(`File "${filename}" deleted successfully`)
       onUpload()
     } catch (error) {
-      setUploadError(
-        error.response?.data?.detail || 'Error deleting file'
-      )
+      const errorMsg = error.response?.data?.detail || 'Error deleting file'
+      setUploadError(errorMsg)
+      toast.error(errorMsg)
     } finally {
       setDeletingId(null)
     }
   }, [clearMessages, onUpload])
+
+  const handleBulkDelete = useCallback(async () => {
+    if (selectedFiles.size === 0) {
+      toast.error('Please select files to delete')
+      return
+    }
+
+    const fileIds = Array.from(selectedFiles)
+    clearMessages()
+
+    try {
+      const response = await apiClient.post('/api/upload/bulk-delete', { file_ids: fileIds })
+      toast.success(`Deleted ${response.data.deleted_count} file(s) successfully`)
+      setSelectedFiles(new Set())
+      setIsSelectMode(false)
+      onUpload()
+    } catch (error) {
+      const errorMsg = error.response?.data?.detail || 'Error deleting files'
+      toast.error(errorMsg)
+    }
+  }, [selectedFiles, clearMessages, onUpload])
+
+  const handleToggleSelect = useCallback((fileId) => {
+    setSelectedFiles(prev => {
+      const newSet = new Set(prev)
+      if (newSet.has(fileId)) {
+        newSet.delete(fileId)
+      } else {
+        newSet.add(fileId)
+      }
+      return newSet
+    })
+  }, [])
+
+  const handleSelectAll = useCallback(() => {
+    if (selectedFiles.size === files.length) {
+      setSelectedFiles(new Set())
+    } else {
+      setSelectedFiles(new Set(files.map(f => f.id)))
+    }
+  }, [selectedFiles, files])
+
+  // Drag and drop handlers for file reordering
+  const handleFileDragStart = useCallback((index) => {
+    setDraggedIndex(index)
+  }, [])
+
+  const handleFileDragOver = useCallback((e, index) => {
+    e.preventDefault()
+    setDragOverIndex(index)
+  }, [])
+
+  const handleFileDragLeave = useCallback(() => {
+    setDragOverIndex(null)
+  }, [])
+
+  const handleFileDrop = useCallback((e, dropIndex) => {
+    e.preventDefault()
+    if (draggedIndex === null || draggedIndex === dropIndex) {
+      setDraggedIndex(null)
+      setDragOverIndex(null)
+      return
+    }
+
+    const currentFiles = reorderedFiles || files
+    const newFiles = [...currentFiles]
+    const [draggedFile] = newFiles.splice(draggedIndex, 1)
+    newFiles.splice(dropIndex, 0, draggedFile)
+    
+    setReorderedFiles(newFiles)
+    setDraggedIndex(null)
+    setDragOverIndex(null)
+    toast.success('Files reordered')
+  }, [draggedIndex, files, reorderedFiles])
 
   const handleFileInputClick = useCallback(() => {
     if (!file && fileInputRef.current) {
@@ -142,16 +222,17 @@ function FileUpload({ onUpload, onJobCreated, files }) {
     <div className="space-y-6">
       {/* Modern Upload Box */}
       <div className="relative">
-        <div
-          onDrop={handleDrop}
-          onDragOver={handleDragOver}
-          onDragLeave={handleDragLeave}
-          className={`relative bg-slate-900/40 backdrop-blur-sm border-2 rounded-3xl transition-all duration-300 ${
-            isDragging
-              ? 'border-blue-400 shadow-2xl shadow-blue-500/30 scale-[1.01]'
-              : 'border-blue-600/40 hover:border-blue-500/60'
-          } ${file ? 'min-h-[400px]' : 'min-h-[350px]'}`}
-        >
+            <div
+              onDrop={handleDrop}
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              className={`relative backdrop-blur-sm border-2 rounded-3xl transition-all duration-300 ${
+                isDragging
+                  ? 'border-blue-400 shadow-2xl shadow-blue-500/30 scale-[1.01]'
+                  : 'border-blue-600/40 hover:border-blue-500/60'
+              } ${file ? 'min-h-[400px]' : 'min-h-[350px]'}`}
+              style={{ backgroundColor: 'var(--bg-primary)' }}
+            >
           {/* Main Content Area */}
           <div 
             className="p-8 cursor-pointer"
@@ -213,12 +294,13 @@ function FileUpload({ onUpload, onJobCreated, files }) {
           </div>
 
           {/* Bottom Action Bar */}
-          <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-blue-700/30 bg-slate-900/30 backdrop-blur-sm rounded-b-3xl">
+          <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-blue-700/30 backdrop-blur-sm rounded-b-3xl" style={{ backgroundColor: 'var(--bg-secondary)' }}>
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-3">
                 <label
                   onClick={handleFileInputClick}
-                  className="flex items-center space-x-2 px-4 py-2 bg-slate-800/80 border border-blue-600/40 rounded-xl text-blue-300 hover:bg-slate-700/80 hover:border-blue-500/60 cursor-pointer transition-all duration-200"
+                  className="flex items-center space-x-2 px-4 py-2 border border-blue-600/40 rounded-xl text-blue-300 hover:bg-slate-700/80 hover:border-blue-500/60 cursor-pointer transition-all duration-200"
+                  style={{ backgroundColor: 'var(--bg-primary)' }}
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
@@ -229,7 +311,8 @@ function FileUpload({ onUpload, onJobCreated, files }) {
                 <button
                   onClick={handleUpload}
                   disabled={uploading || !file}
-                  className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-xl hover:from-blue-500 hover:to-cyan-500 disabled:from-gray-600 disabled:to-gray-600 disabled:cursor-not-allowed transition-all duration-200 font-medium text-sm shadow-lg shadow-blue-600/30"
+                  className="flex items-center space-x-2 px-4 py-2 border border-blue-600/40 rounded-xl text-blue-300 hover:bg-slate-700/80 hover:border-blue-500/60 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 font-medium text-sm"
+                  style={{ backgroundColor: 'var(--bg-primary)' }}
                 >
                   {uploading ? (
                     <>
@@ -251,10 +334,10 @@ function FileUpload({ onUpload, onJobCreated, files }) {
               </div>
 
               <div className="flex items-center space-x-2">
-                <div className="px-3 py-1.5 bg-blue-900/40 border border-blue-600/40 rounded-lg text-xs text-blue-300">
+                <div className="px-3 py-1.5 bg-blue-900/40 border border-blue-600/40 rounded-lg text-xs text-blue-300" style={{ backgroundColor: 'var(--bg-primary)' }}>
                   Log Files
                 </div>
-                <button className="p-2 hover:bg-slate-700/50 rounded-lg transition-colors">
+                <button className="p-2 hover:bg-slate-700/50 rounded-lg transition-colors" style={{ backgroundColor: 'var(--bg-primary)' }}>
                   <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
                   </svg>
@@ -285,39 +368,111 @@ function FileUpload({ onUpload, onJobCreated, files }) {
       </div>
 
       {files.length > 0 && (
-        <div className="bg-slate-800/40 backdrop-blur-sm shadow-2xl rounded-2xl p-8 border border-blue-700/30 hover:shadow-blue-900/50 transition-shadow duration-300">
-          <div className="flex items-center space-x-3 mb-6">
-            <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-lg flex items-center justify-center">
-              <span className="text-xl">📁</span>
+        <div className="backdrop-blur-sm shadow-2xl rounded-2xl p-8 border border-blue-700/30 hover:shadow-blue-900/50 transition-shadow duration-300" style={{ backgroundColor: 'var(--bg-primary)' }}>
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center space-x-3">
+              <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-lg flex items-center justify-center">
+                <span className="text-xl">📁</span>
+              </div>
+              <h2 className="text-2xl font-bold text-blue-400">
+                Uploaded Files
+              </h2>
+              <span className="bg-blue-900/50 text-blue-300 px-3 py-1 rounded-full text-sm font-semibold border border-blue-600/50">
+                {files.length}
+              </span>
+              {isSelectMode && selectedFiles.size > 0 && (
+                <span className="bg-green-900/50 text-green-300 px-3 py-1 rounded-full text-sm font-semibold border border-green-600/50">
+                  {selectedFiles.size} selected
+                </span>
+              )}
             </div>
-            <h2 className="text-2xl font-bold text-blue-400">
-              Uploaded Files
-            </h2>
-            <span className="bg-blue-900/50 text-blue-300 px-3 py-1 rounded-full text-sm font-semibold border border-blue-600/50">
-              {files.length}
-            </span>
+            <div className="flex items-center space-x-2">
+              {isSelectMode ? (
+                <>
+                  <button
+                    onClick={handleSelectAll}
+                    className="px-3 py-1.5 border border-blue-500/50 text-blue-200 hover:bg-blue-900/50 rounded-lg text-sm font-medium transition-colors"
+                    style={{ backgroundColor: 'var(--bg-primary)' }}
+                  >
+                    {selectedFiles.size === files.length ? 'Deselect All' : 'Select All'}
+                  </button>
+                  <button
+                    onClick={handleBulkDelete}
+                    disabled={selectedFiles.size === 0}
+                    className="px-3 py-1.5 border border-red-500/50 text-red-200 hover:bg-red-900/50 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+                    style={{ backgroundColor: 'var(--bg-primary)' }}
+                  >
+                    Delete Selected ({selectedFiles.size})
+                  </button>
+                  <button
+                    onClick={() => {
+                      setIsSelectMode(false)
+                      setSelectedFiles(new Set())
+                    }}
+                    className="px-3 py-1.5 border border-gray-500/50 text-gray-200 hover:bg-gray-900/50 rounded-lg text-sm font-medium transition-colors"
+                    style={{ backgroundColor: 'var(--bg-primary)' }}
+                  >
+                    Cancel
+                  </button>
+                </>
+              ) : (
+                <button
+                  onClick={() => setIsSelectMode(true)}
+                  className="px-3 py-1.5 border border-blue-500/50 text-blue-200 hover:bg-blue-900/50 rounded-lg text-sm font-medium transition-colors"
+                  style={{ backgroundColor: 'var(--bg-primary)' }}
+                >
+                  Select Files
+                </button>
+              )}
+            </div>
           </div>
           <div className="space-y-4">
-                 {files.map((f) => (
-                   <div key={f.id} className="space-y-3">
+                 {(reorderedFiles || files).map((f, index) => (
+                   <div 
+                     key={f.id} 
+                     className="space-y-3"
+                     draggable={!isSelectMode}
+                     onDragStart={() => handleFileDragStart(index)}
+                     onDragOver={(e) => handleFileDragOver(e, index)}
+                     onDragLeave={handleFileDragLeave}
+                     onDrop={(e) => handleFileDrop(e, index)}
+                   >
                      <div
-                       className="flex items-center justify-between p-5 border-2 border-blue-700/30 rounded-xl hover:border-blue-500/60 hover:shadow-lg hover:shadow-blue-500/20 transition-all duration-200 bg-gradient-to-r from-slate-800/60 to-slate-900/60 backdrop-blur-sm"
+                       className={`flex items-center justify-between p-5 border-2 rounded-xl transition-all duration-200 backdrop-blur-sm ${
+                         dragOverIndex === index ? 'border-blue-500 border-4 scale-105' : 'border-blue-700/30 hover:border-blue-500/60'
+                       } ${draggedIndex === index ? 'opacity-50' : ''} ${isSelectMode && selectedFiles.has(f.id) ? 'ring-2 ring-blue-500 bg-blue-900/30' : ''}`}
+                       style={{ backgroundColor: 'var(--bg-primary)' }}
                      >
                 <div className="flex items-center space-x-4 flex-1">
+                  {isSelectMode && (
+                    <input
+                      type="checkbox"
+                      checked={selectedFiles.has(f.id)}
+                      onChange={() => handleToggleSelect(f.id)}
+                      className="w-5 h-5 text-blue-600 rounded border-gray-300 focus:ring-blue-500 cursor-pointer"
+                    />
+                  )}
+                  {!isSelectMode && (
+                    <div className="cursor-move text-gray-400 hover:text-gray-300">
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8h16M4 16h16" />
+                      </svg>
+                    </div>
+                  )}
                  <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-lg flex items-center justify-center shadow-md shadow-blue-500/30">
                    <span className="text-2xl">📄</span>
                  </div>
                   <div className="flex-1">
-                       <p className="font-bold text-gray-100 text-lg">{f.original_filename}</p>
-                       <div className="flex items-center space-x-4 mt-1">
-                         <p className="text-sm text-gray-300 flex items-center space-x-1">
+                      <p className="font-bold text-gray-100 text-lg" style={{ color: 'var(--text-primary)' }}>{f.original_filename}</p>
+                      <div className="flex items-center space-x-4 mt-1">
+                        <p className="text-sm text-gray-300 flex items-center space-x-1" style={{ color: 'var(--text-secondary)' }}>
                            <span>💾</span>
                            <span>{formatFileSize(f.file_size)}</span>
                          </p>
-                         <p className="text-sm text-gray-300 flex items-center space-x-1">
-                           <span>🕒</span>
-                           <span>{formatDate(f.uploaded_at)}</span>
-                         </p>
+                        <p className="text-sm text-gray-300 flex items-center space-x-1" style={{ color: 'var(--text-secondary)' }}>
+                          <span>🕒</span>
+                          <span>{formatDate(f.uploaded_at)}</span>
+                        </p>
                        </div>
                   </div>
                 </div>

@@ -31,6 +31,8 @@ class Job(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     completed_at = Column(DateTime, nullable=True)
     error_message = Column(Text, nullable=True)
+    retry_count = Column(Integer, default=0)  # Track retry attempts
+    started_at = Column(DateTime, nullable=True)  # Track when processing started
     
     log_file = relationship("LogFile", back_populates="jobs")
     rule = relationship("Rule", back_populates="job", uselist=False)

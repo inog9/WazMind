@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
-import axios from 'axios'
-import { API_BASE_URL } from '../constants/api'
+import toast from 'react-hot-toast'
+import { apiClient } from '../utils/api'
 import { formatDate } from '../utils/format'
 
 function RuleViewer({ rule, onUpdate }) {
@@ -33,7 +33,7 @@ function RuleViewer({ rule, onUpdate }) {
   if (!rule || !rule.rule_xml) {
     return (
       <div className="relative">
-        <div className="bg-slate-900/40 backdrop-blur-sm border-2 border-blue-600/40 rounded-3xl transition-all duration-300 hover:border-blue-500/60 min-h-[400px]">
+        <div className="backdrop-blur-sm border-2 border-blue-600/40 rounded-3xl transition-all duration-300 hover:border-blue-500/60 min-h-[400px]" style={{ backgroundColor: 'var(--bg-primary)' }}>
           <div className="flex flex-col items-center justify-center py-16 text-center">
             <div className="w-24 h-24 rounded-2xl bg-gradient-to-br from-blue-500/10 to-cyan-500/10 border border-blue-400/20 flex items-center justify-center mb-6">
               <svg className="w-12 h-12 text-blue-400/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -75,14 +75,17 @@ function RuleViewer({ rule, onUpdate }) {
     clearMessages()
 
     try {
-      await axios.put(`${API_BASE_URL}/api/rules/${rule.id}`, {
+      await apiClient.put(`/api/rules/${rule.id}`, {
         rule_xml: ruleXml,
       })
+      toast.success('Rule updated successfully')
       setSuccess('Rule updated successfully!')
       setEditing(false)
       onUpdate()
     } catch (err) {
-      setError(err.response?.data?.detail || 'Error updating rule')
+      const errorMsg = err.response?.data?.detail || 'Error updating rule'
+      setError(errorMsg)
+      toast.error(errorMsg)
     } finally {
       setSaving(false)
     }
@@ -124,9 +127,9 @@ function RuleViewer({ rule, onUpdate }) {
 
   return (
     <div className="relative">
-      <div className="bg-slate-900/40 backdrop-blur-sm border-2 border-blue-600/40 rounded-3xl transition-all duration-300 hover:border-blue-500/60">
+      <div className="backdrop-blur-sm border-2 border-blue-600/40 rounded-3xl transition-all duration-300 hover:border-blue-500/60" style={{ backgroundColor: 'var(--bg-primary)' }}>
         {/* Header */}
-        <div className="p-6 border-b border-blue-700/30 bg-slate-900/30 backdrop-blur-sm rounded-t-3xl">
+        <div className="p-6 border-b border-blue-700/30 backdrop-blur-sm rounded-t-3xl" style={{ backgroundColor: 'var(--bg-secondary)' }}>
           <div className="flex justify-between items-center">
             <div className="flex items-center space-x-4">
               <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500/20 to-cyan-500/20 border border-blue-400/30 flex items-center justify-center">
@@ -140,21 +143,23 @@ function RuleViewer({ rule, onUpdate }) {
               </div>
             </div>
             <div className="flex items-center space-x-2">
-              {!editing ? (
-                <>
-                  <button
-                    onClick={handleEdit}
-                    className="flex items-center space-x-2 px-4 py-2 bg-slate-800/80 border border-blue-600/40 rounded-xl text-blue-300 hover:bg-slate-700/80 hover:border-blue-500/60 transition-all duration-200"
-                  >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                    </svg>
-                    <span className="text-sm font-medium">Edit</span>
-                  </button>
-                  <button
-                    onClick={handleCopy}
-                    className="flex items-center space-x-2 px-4 py-2 bg-slate-800/80 border border-blue-600/40 rounded-xl text-blue-300 hover:bg-slate-700/80 hover:border-blue-500/60 transition-all duration-200"
-                  >
+                  {!editing ? (
+                    <>
+                      <button
+                        onClick={handleEdit}
+                        className="flex items-center space-x-2 px-4 py-2 border border-blue-600/40 rounded-xl text-blue-300 hover:bg-slate-700/80 hover:border-blue-500/60 transition-all duration-200"
+                        style={{ backgroundColor: 'var(--bg-primary)' }}
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                        </svg>
+                        <span className="text-sm font-medium">Edit</span>
+                      </button>
+                      <button
+                        onClick={handleCopy}
+                        className="flex items-center space-x-2 px-4 py-2 border border-blue-600/40 rounded-xl text-blue-300 hover:bg-slate-700/80 hover:border-blue-500/60 transition-all duration-200"
+                        style={{ backgroundColor: 'var(--bg-primary)' }}
+                      >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
                     </svg>
@@ -171,11 +176,12 @@ function RuleViewer({ rule, onUpdate }) {
                   </button>
                 </>
               ) : (
-                <>
-                  <button
-                    onClick={handleCancel}
-                    className="flex items-center space-x-2 px-4 py-2 bg-slate-800/80 border border-blue-600/40 rounded-xl text-blue-300 hover:bg-slate-700/80 hover:border-blue-500/60 transition-all duration-200"
-                  >
+                    <>
+                      <button
+                        onClick={handleCancel}
+                        className="flex items-center space-x-2 px-4 py-2 border border-blue-600/40 rounded-xl text-blue-300 hover:bg-slate-700/80 hover:border-blue-500/60 transition-all duration-200"
+                        style={{ backgroundColor: 'var(--bg-primary)' }}
+                      >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                     </svg>
@@ -273,17 +279,18 @@ function RuleViewer({ rule, onUpdate }) {
             </div>
           )}
 
-          <div className="border border-blue-700/30 rounded-xl overflow-hidden bg-slate-900/30">
+          <div className="border border-blue-700/30 rounded-xl overflow-hidden" style={{ backgroundColor: 'var(--bg-primary)' }}>
             {editing ? (
               <textarea
                 value={ruleXml}
                 onChange={(e) => setRuleXml(e.target.value)}
                 className="w-full h-96 p-6 font-mono text-sm border-0 focus:ring-2 focus:ring-blue-500 bg-slate-900 text-gray-200 focus:bg-slate-800 transition-colors"
+                style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}
                 spellCheck={false}
               />
             ) : (
-              <pre className="p-6 bg-slate-900 overflow-x-auto">
-                <code className="text-sm font-mono text-blue-300 leading-relaxed whitespace-pre-wrap break-words">
+              <pre className="p-6 bg-slate-900 overflow-x-auto" style={{ backgroundColor: 'var(--bg-primary)' }}>
+                <code className="text-sm font-mono text-blue-300 leading-relaxed whitespace-pre-wrap break-words" style={{ color: 'var(--text-primary)' }}>
                   {ruleXml || (rule && rule.rule_xml) || 'Loading rule...'}
                 </code>
               </pre>

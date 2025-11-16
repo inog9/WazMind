@@ -49,16 +49,16 @@ Transform your security logs into production-ready Wazuh detection rules using a
 > **Note:** Screenshots will be added soon. For now, you can see the live application at `http://localhost:5173` after setup.
 
 ### Homepage
+<img width="1440" height="744" alt="F473DD6C-C40C-48AC-8C3A-370D14C438D0" src="https://github.com/user-attachments/assets/2aa42042-49a5-4580-9fd9-102d46bdf454" />
 ```
-[Homepage Screenshot Placeholder]
 - Modern hero section with gradient text
 - Feature cards with icons
 - Call-to-action buttons
 ```
 
 ### Dashboard
+<img width="1438" height="676" alt="7B015782-3678-40C4-9990-635A11024A5D" src="https://github.com/user-attachments/assets/c6c3e217-2730-4333-9e9e-da29cfff14ff" />
 ```
-[Dashboard Screenshot Placeholder]
 - File upload zone
 - Uploaded files list
 - Generation jobs tracker

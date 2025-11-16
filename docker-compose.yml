@@ -11,13 +11,15 @@ services:
       - UPLOAD_DIR=/app/uploads
       - SECRET_KEY=${SECRET_KEY:-supersecret}
       - MAX_UPLOAD_SIZE_MB=${MAX_UPLOAD_SIZE_MB:-10}
-      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-http://localhost:5173}
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-http://localhost:5173,http://localhost:3000}
       - GROQ_API_KEY=${GROQ_API_KEY}
       - GROQ_MODEL=${GROQ_MODEL:-meta-llama/llama-4-scout-17b-16e-instruct}
     volumes:
       - ./backend/uploads:/app/uploads
-      - ./backend/data:/app
+      - ./backend/app.db:/app/app.db
     restart: unless-stopped
+    networks:
+      - wazmind-network
 
   frontend:
     build: ./frontend
@@ -25,8 +27,16 @@ services:
     ports:
       - "5173:5173"
     environment:
-      - VITE_API_URL=http://localhost:8000
+      - VITE_API_URL=${VITE_API_URL:-http://localhost:8000}
+      - VITE_AUTH0_DOMAIN=${VITE_AUTH0_DOMAIN:-}
+      - VITE_AUTH0_CLIENT_ID=${VITE_AUTH0_CLIENT_ID:-}
     depends_on:
       - backend
     restart: unless-stopped
+    networks:
+      - wazmind-network
+
+networks:
+  wazmind-network:
+    driver: bridge
 

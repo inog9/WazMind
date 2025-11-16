@@ -72,3 +72,6 @@ build/
 *.tmp
 *.temp
 .cache/
+
+# Internal documentation
+PUBLIC_REPO_CHECKLIST.md

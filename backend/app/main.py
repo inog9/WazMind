@@ -85,24 +85,42 @@ app.add_middleware(GZipMiddleware, minimum_size=1000)
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         response = await call_next(request)
-        # Content Security Policy
-        response.headers["Content-Security-Policy"] = (
-            "default-src 'self'; "
-            "script-src 'self' 'unsafe-inline' 'unsafe-eval'; "
-            "style-src 'self' 'unsafe-inline'; "
-            "img-src 'self' data: https:; "
-            "font-src 'self' data:; "
-            "connect-src 'self' https://api.groq.com; "
-            "frame-ancestors 'none'; "
-            "base-uri 'self'; "
-            "form-action 'self'"
-        )
+        
+        # Relax CSP for docs endpoints (Swagger UI needs more permissions)
+        if request.url.path in ["/docs", "/redoc", "/openapi.json"]:
+            response.headers["Content-Security-Policy"] = (
+                "default-src 'self'; "
+                "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net; "
+                "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
+                "img-src 'self' data: https:; "
+                "font-src 'self' data: https://cdn.jsdelivr.net; "
+                "connect-src 'self' https://api.groq.com; "
+                "frame-ancestors 'none'; "
+                "base-uri 'self'; "
+                "form-action 'self'"
+            )
+            # Allow framing for Swagger UI
+            response.headers["X-Frame-Options"] = "SAMEORIGIN"
+        else:
+            # Strict CSP for API endpoints
+            response.headers["Content-Security-Policy"] = (
+                "default-src 'self'; "
+                "script-src 'self' 'unsafe-inline' 'unsafe-eval'; "
+                "style-src 'self' 'unsafe-inline'; "
+                "img-src 'self' data: https:; "
+                "font-src 'self' data:; "
+                "connect-src 'self' https://api.groq.com; "
+                "frame-ancestors 'none'; "
+                "base-uri 'self'; "
+                "form-action 'self'"
+            )
+            # Prevent clickjacking for API endpoints
+            response.headers["X-Frame-Options"] = "DENY"
+        
         # XSS Protection
         response.headers["X-XSS-Protection"] = "1; mode=block"
         # Prevent MIME type sniffing
         response.headers["X-Content-Type-Options"] = "nosniff"
-        # Prevent clickjacking
-        response.headers["X-Frame-Options"] = "DENY"
         # Referrer Policy
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
         return response

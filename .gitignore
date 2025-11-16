@@ -4,34 +4,24 @@ __pycache__/
 *$py.class
 *.so
 .Python
-env/
 venv/
+env/
 ENV/
-.venv
-*.db
-*.sqlite
-*.sqlite3
-*.pyc
-*.pyo
-*.pyd
-.Python
+*.egg-info/
+dist/
+build/
 
 # Node
 node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-.pnp
-.pnp.js
-dist/
-build/
-.vite/
+.pnpm-debug.log*
 
-# Environment
+# Environment variables
 .env
 .env.local
 .env.*.local
-.env.production
 
 # IDE
 .vscode/
@@ -39,31 +29,46 @@ build/
 *.swp
 *.swo
 *~
-*.sublime-project
-*.sublime-workspace
-
-# OS
 .DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
-Thumbs.db
-
-# Uploads & Data
-uploads/
-backend/uploads/
-backend/data/
-backend/app.db
-*.log
 
 # Database
-*.db-journal
-*.db-wal
-*.db-shm
+*.db
+*.sqlite
+*.sqlite3
 
 # Logs
 *.log
 logs/
 
+# Uploads
+uploads/
+backend/uploads/
+sample/
+
+# Test files and coverage
+**/__tests__/
+**/tests/
+**/*.test.js
+**/*.test.jsx
+**/*.test.ts
+**/*.test.tsx
+**/test_*.py
+**/__pycache__/
+.coverage
+htmlcov/
+.coverage.*
+coverage/
+*.cover
+coverage.xml
+.pytest_cache/
+.vitest/
+
+# Build outputs
+dist/
+build/
+*.egg-info/
+
+# Temporary files
+*.tmp
+*.temp
+.cache/

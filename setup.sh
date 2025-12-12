@@ -108,15 +108,20 @@ setup_backend() {
     
     # Activate virtual environment
     print_info "Activating virtual environment..."
+    # shellcheck source=/dev/null
     source venv/bin/activate
+    
+    # Ensure pip exists (handles cases where ensurepip wasn't run)
+    print_info "Ensuring pip is available..."
+    python -m ensurepip --upgrade >/dev/null 2>&1
     
     # Upgrade pip
     print_info "Upgrading pip..."
-    pip install --upgrade pip --quiet
+    python -m pip install --upgrade pip --quiet
     
     # Install dependencies
     print_info "Installing Python dependencies..."
-    pip install -r requirements.txt --quiet
+    python -m pip install -r requirements.txt --quiet
     print_success "Backend dependencies installed"
     
     # Deactivate virtual environment

@@ -33,11 +33,13 @@ class LogFileResponse(BaseModel):
 
 class JobCreate(BaseModel):
     log_file_id: int
+    rule_id: Optional[int] = None  # Optional custom rule ID (100000-120000)
 
 class JobResponse(BaseModel):
     id: int
     log_file_id: int
     status: JobStatus
+    rule_id: Optional[int] = None
     created_at: datetime
     completed_at: Optional[datetime] = None
     error_message: Optional[str] = None
@@ -57,4 +59,23 @@ class RuleResponse(BaseModel):
 
 class RuleUpdate(BaseModel):
     rule_xml: str
+
+class WazuhRuleResponse(BaseModel):
+    id: int
+    rule_id: int
+    level: int
+    description: Optional[str] = None
+    groups: Optional[str] = None
+    source: str
+    file_path: str
+    file_name: str
+    file_mtime: Optional[datetime] = None
+    is_overwritten: int
+    rule_xml: Optional[str] = None
+    scanned_at: datetime
+    parent_rule_ids: Optional[str] = None
+    child_rule_ids: Optional[str] = None
+    
+    class Config:
+        from_attributes = True
 

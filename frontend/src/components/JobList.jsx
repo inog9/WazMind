@@ -116,10 +116,15 @@ function JobList({ jobs, pagination, onRefresh, onViewRule }) {
                 </div>
                 <div>
                   <p className="font-semibold text-green-100 text-sm">{showToast.message}</p>
-                  <button
-                    onClick={() => {
-                      onViewRule(showToast.jobId)
-                      setShowToast(null)
+                    <button
+                    onClick={async () => {
+                      try {
+                        await onViewRule(showToast.jobId)
+                        setShowToast(null)
+                      } catch (error) {
+                        // Error already handled in onViewRule
+                        console.error('Error viewing rule:', error)
+                      }
                     }}
                     className="text-xs text-green-200 hover:text-green-100 underline mt-1"
                   >
@@ -249,7 +254,12 @@ function JobList({ jobs, pagination, onRefresh, onViewRule }) {
                             newSet.delete(job.id) // Remove from newly completed after viewing
                             return newSet
                           })
-                          onViewRule(job.id)
+                          if (job.status === 'completed') {
+                            onViewRule(job.id)
+                          } else {
+                            // Show helpful message
+                            alert(`Job #${job.id} is still ${job.status}. Please wait for it to complete.`)
+                          }
                         }}
                         className={`ml-4 flex items-center space-x-2 px-4 py-2 rounded-xl text-white text-sm font-medium shadow-lg transition-all duration-200 ${
                           isNewlyCompleted

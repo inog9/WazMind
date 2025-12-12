@@ -38,6 +38,7 @@ class Job(Base):
     error_message = Column(Text, nullable=True)
     retry_count = Column(Integer, default=0)  # Track retry attempts
     started_at = Column(DateTime, nullable=True)  # Track when processing started
+    rule_id = Column(Integer, nullable=True)  # Optional custom rule ID (100000-120000)
     
     log_file = relationship("LogFile", back_populates="jobs")
     rule = relationship("Rule", back_populates="job", uselist=False)
@@ -62,5 +63,34 @@ class Rule(Base):
     # Composite index for common query patterns
     __table_args__ = (
         Index('idx_rule_created_at', 'created_at'),
+    )
+
+class WazuhRule(Base):
+    """Model for storing scanned Wazuh rules from server"""
+    __tablename__ = "wazuh_rules"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    rule_id = Column(Integer, nullable=False, index=True)  # Wazuh rule ID (e.g., 100001, 5710)
+    level = Column(Integer, nullable=False, index=True)
+    description = Column(Text, nullable=True)
+    groups = Column(String, nullable=True)  # Comma-separated groups
+    source = Column(String, nullable=False, index=True)  # 'default' or 'custom'
+    file_path = Column(String, nullable=False)  # Full path to XML file
+    file_name = Column(String, nullable=False)  # Just filename
+    file_mtime = Column(DateTime, nullable=True)  # File modification time
+    is_overwritten = Column(Integer, default=0)  # 0 or 1 (boolean)
+    rule_xml = Column(Text, nullable=True)  # Full XML (lazy loaded)
+    scanned_at = Column(DateTime, default=datetime.utcnow, index=True)
+    
+    # Dependencies (stored as JSON string or comma-separated)
+    parent_rule_ids = Column(String, nullable=True)  # Comma-separated parent rule IDs (if_sid)
+    child_rule_ids = Column(String, nullable=True)  # Will be calculated
+    
+    # Composite indexes for common query patterns
+    __table_args__ = (
+        Index('idx_wazuh_rule_id', 'rule_id'),
+        Index('idx_wazuh_source', 'source'),
+        Index('idx_wazuh_scanned_at', 'scanned_at'),
+        Index('idx_wazuh_level', 'level'),
     )
 

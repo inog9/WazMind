@@ -18,12 +18,12 @@ router = APIRouter(prefix="/api/jobs", tags=["jobs"])
 def get_limiter(request: Request):
     return request.app.state.limiter
 
-def process_job_background(job_id: int, log_file_id: int):
+def process_job_background(job_id: int, log_file_id: int, rule_id: int = None):
     """Background task to process job with retry and timeout"""
     db = SessionLocal()
     try:
-        logger.info(f"Starting background processing for job {job_id}")
-        process_job_with_retry(job_id, log_file_id, db)
+        logger.info(f"Starting background processing for job {job_id}" + (f" with rule_id {rule_id}" if rule_id else ""))
+        process_job_with_retry(job_id, log_file_id, db, rule_id=rule_id)
     except Exception as e:
         logger.error(f"Unexpected error in background task for job {job_id}: {str(e)}", exc_info=True)
     finally:
@@ -49,10 +49,19 @@ async def create_generation_job(
     if not log_file:
         raise HTTPException(status_code=404, detail="Log file not found")
     
+    # Validate rule_id if provided (must be in custom range 100000-120000)
+    if job_data.rule_id is not None:
+        if not (100000 <= job_data.rule_id < 120000):
+            raise HTTPException(
+                status_code=400,
+                detail="Rule ID must be between 100000 and 119999 for custom rules"
+            )
+    
     # Create job
     job = Job(
         log_file_id=job_data.log_file_id,
-        status=JobStatus.PENDING
+        status=JobStatus.PENDING,
+        rule_id=job_data.rule_id
     )
     db.add(job)
     db.commit()
@@ -62,8 +71,8 @@ async def create_generation_job(
     from ..utils.cache import cache
     cache.delete("job_count")
     
-    # Start background task
-    background_tasks.add_task(process_job_background, job.id, job_data.log_file_id)
+    # Start background task (pass rule_id if available)
+    background_tasks.add_task(process_job_background, job.id, job_data.log_file_id, job_data.rule_id)
     
     return job
 

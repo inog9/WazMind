@@ -30,12 +30,36 @@ def validate_file_extension(filename: str, allowed_extensions: list[str] = None)
     
     return True, None, sanitized_filename
 
+def validate_and_fix_rule_id(rule_xml: str) -> str:
+    """Fix invalid rule IDs like '100004-1' to proper integers"""
+    import re
+    
+    # Pattern to find rule id="..." with invalid formats
+    # Match: id="100004-1", id="100004.1", id="100004_1", etc.
+    pattern = r'id="(\d+)[\-_\.](\d+)"'
+    
+    def replace_invalid_id(match):
+        base_id = int(match.group(1))
+        suffix = int(match.group(2))
+        # Convert to sequential ID: 100004-1 becomes 100005, 100004-2 becomes 100006, etc.
+        # If base is 100004 and suffix is 1, next ID should be 100005
+        new_id = base_id + suffix
+        return f'id="{new_id}"'
+    
+    # Replace invalid IDs
+    fixed_xml = re.sub(pattern, replace_invalid_id, rule_xml)
+    
+    return fixed_xml
+
 def validate_xml_rule(rule_xml: str) -> tuple[bool, Optional[str], str]:
     """Enhanced XML validation for Wazuh rule with XSS protection"""
     from .sanitizer import validate_and_sanitize_rule_xml
     
+    # First, fix invalid rule IDs (like "100004-1" -> "100004")
+    fixed_xml = validate_and_fix_rule_id(rule_xml)
+    
     # Use sanitizer for validation
-    is_valid, error, sanitized = validate_and_sanitize_rule_xml(rule_xml)
+    is_valid, error, sanitized = validate_and_sanitize_rule_xml(fixed_xml)
     if not is_valid:
         return False, error, ""
     

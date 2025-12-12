@@ -30,12 +30,13 @@ class GroqClient:
             raise ValueError("GROQ_API_KEY environment variable is not set")
         
         # Use OpenAI SDK with Groq base URL (OpenAI-compatible API)
-        self._client = OpenAI(
+        client = OpenAI(
             api_key=api_key,
             base_url="https://api.groq.com/openai/v1",
             timeout=60.0,  # 60 second timeout
         )
-        GroqClient._client = self._client
+        self._client = client
+        GroqClient._client = client
         
         # Recommended models for Wazuh rule generation (ordered by preference)
         # Based on limits: llama-4-scout-17b has best tokens/min (30K), llama-3.3-70b has best quality
@@ -60,11 +61,11 @@ class GroqClient:
                 logger.info(f"Using custom model: {model_name} (not in recommended list)")
         
         self.model_name = model_name
-        self.client = self._client
+        self.client = client
         GroqClient._model_name = model_name
         logger.info(f"Using Groq model: {self.model_name}")
     
-    def generate_wazuh_rule(self, sample_lines: List[str]) -> str:
+    def generate_wazuh_rule(self, sample_lines: List[str], rule_id: int = None) -> str:
         """Generate Wazuh rule from log samples using Groq API"""
         
         # Limit to 50 lines and ensure we have content
@@ -72,6 +73,9 @@ class GroqClient:
             raise ValueError("No log lines provided for rule generation")
         
         sample_text = "\n".join(sample_lines[:50])  # Limit to 50 lines for token efficiency
+        
+        # Build rule_id instruction
+        rule_id_instruction = f"USE THE EXACT RULE ID: {rule_id}" if rule_id else "unique rule id (>=100000)"
         
         prompt = f"""You are a Wazuh rule creation expert.
 
@@ -95,22 +99,34 @@ Given the following example log lines:
 
 Generate a valid Wazuh rule in XML format that detects similar patterns.
 Include:
-- unique rule id (>=100000)
+- rule id: {rule_id_instruction}
 - level (10–12)
 - description
 - decoder name if possible
 - pattern matching for the log structure
 
+CRITICAL RULES FOR RULE ID:
+1. Rule ID MUST be a simple integer (e.g., 100004, 100005, 100006)
+2. NEVER use suffixes like "100004-1", "100004-2", or "100004_1"
+3. NEVER use decimal numbers like "100004.1"
+4. Each rule must have a UNIQUE integer ID
+5. If generating multiple rules, use sequential IDs: 100004, 100005, 100006, etc.
+
 If you're adapting an existing rule from the repository, mention it in the description.
 
 Return ONLY XML rule, no explanations. The XML should be properly formatted and valid.
 
-Example format:
+Example format (CORRECT):
 <rule id="100001" level="10">
     <decoder>custom_decoder</decoder>
     <regex>pattern here</regex>
     <description>Description of what this rule detects</description>
 </rule>
+
+Example format (WRONG - DO NOT USE):
+<rule id="100001-1" level="10">  ❌ WRONG
+<rule id="100001.1" level="10">  ❌ WRONG
+<rule id="100001_1" level="10">  ❌ WRONG
 """
         
         max_retries = 3

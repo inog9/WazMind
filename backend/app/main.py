@@ -6,7 +6,8 @@ from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 from .db import engine, Base
-from .api import upload, jobs, rules
+from .models import WazuhRule
+from .api import upload, jobs, rules, wazuh_rules
 import os
 import logging
 from pathlib import Path
@@ -44,6 +45,12 @@ if not env_loaded:
 
 # Create database tables
 Base.metadata.create_all(bind=engine)
+
+# Ensure WazuhRule table exists (for new installations)
+try:
+    WazuhRule.__table__.create(bind=engine, checkfirst=True)
+except Exception as e:
+    logger.warning(f"WazuhRule table creation check: {str(e)}")
 
 # Run migration to add new columns if needed
 try:
@@ -131,6 +138,7 @@ app.add_middleware(SecurityHeadersMiddleware)
 app.include_router(upload.router)
 app.include_router(jobs.router)
 app.include_router(rules.router)
+app.include_router(wazuh_rules.router)
 
 @app.get("/")
 async def root():

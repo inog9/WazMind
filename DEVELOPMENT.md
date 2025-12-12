@@ -34,23 +34,19 @@ Panduan lengkap untuk menjalankan WazMind tanpa Docker untuk development lokal.
 
 4. **Setup environment variables:**
    
-   Buat file `.env` di **root directory** (recommended) atau di `backend/`:
+   **Backend** - Copy `.env.example` ke `.env`:
    ```bash
-   # Option 1: Di root directory (recommended)
+   # Di root directory (recommended)
    cd ..  # Kembali ke root wazmind/
    cp .env.example .env
    # Edit .env dan tambahkan GROQ_API_KEY Anda
+   ```
    
-   # Option 2: Di backend directory
-   cat > .env << EOF
-   GROQ_API_KEY=your-groq-api-key-here
-   GROQ_MODEL=meta-llama/llama-4-scout-17b-16e-instruct
-   DATABASE_URL=sqlite:///./app.db
-   UPLOAD_DIR=./uploads
-   SECRET_KEY=supersecret
-   MAX_UPLOAD_SIZE_MB=10
-   ALLOWED_ORIGINS=http://localhost:5173
-   EOF
+   Atau buat di `backend/` directory:
+   ```bash
+   # Di backend directory
+   cp ../.env.example .env
+   # Edit .env dan tambahkan GROQ_API_KEY Anda
    ```
    
    Backend akan otomatis mencari `.env` di root directory terlebih dahulu, kemudian di `backend/` jika tidak ditemukan.
@@ -80,14 +76,22 @@ Panduan lengkap untuk menjalankan WazMind tanpa Docker untuk development lokal.
    npm install
    ```
 
-3. **Setup environment variables (optional):**
+3. **Setup environment variables:**
    
-   Buat file `.env` di direktori `frontend/` jika ingin custom API URL:
+   Copy `.env.example` ke `.env` di root directory:
    ```bash
-   echo "VITE_API_URL=http://localhost:8000" > .env
+   cd ..  # Kembali ke root wazmind/
+   cp .env.example .env
    ```
-
-   Default sudah menggunakan `http://localhost:8000` di `vite.config.js`.
+   
+   Edit `.env` dan isi semua values:
+   - `GROQ_API_KEY` - API key untuk backend
+   - `VITE_AUTH0_DOMAIN` - Auth0 domain untuk frontend
+   - `VITE_AUTH0_CLIENT_ID` - Auth0 client ID untuk frontend
+   
+   **Note:** Backend dan frontend akan membaca dari file `.env` yang sama di root directory.
+   
+   Lihat [AUTH0_SETUP.md](../AUTH0_SETUP.md) untuk setup lengkap Auth0.
 
 4. **Jalankan frontend:**
    ```bash

@@ -74,14 +74,46 @@ async def get_rule(rule_id: int, db: Session = Depends(get_db)):
 @router.get("/job/{job_id}", response_model=RuleResponse)
 async def get_rule_by_job(job_id: int, db: Session = Depends(get_db)):
     """Get rule by job ID with optimized query"""
+    # First check if job exists and get its status
+    from ..models import Job, JobStatus
+    job = db.query(Job).filter(Job.id == job_id).first()
+    
+    if not job:
+        raise HTTPException(status_code=404, detail=f"Job {job_id} not found")
+    
+    # Check job status and provide helpful error messages
+    if job.status == JobStatus.PENDING:
+        raise HTTPException(
+            status_code=404, 
+            detail=f"Rule not yet generated. Job {job_id} is still pending. Please wait for the job to complete."
+        )
+    elif job.status == JobStatus.PROCESSING:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Rule is being generated. Job {job_id} is currently processing. Please wait and try again."
+        )
+    elif job.status == JobStatus.FAILED:
+        error_msg = job.error_message or "Unknown error"
+        raise HTTPException(
+            status_code=404,
+            detail=f"Rule generation failed for job {job_id}. Error: {error_msg}"
+        )
+    
+    # Job is completed, try to get the rule
     rule = (
         db.query(Rule)
         .options(joinedload(Rule.job))
         .filter(Rule.job_id == job_id)
         .first()
     )
+    
     if not rule:
-        raise HTTPException(status_code=404, detail="Rule not found for this job")
+        # This shouldn't happen if job is completed, but handle it gracefully
+        raise HTTPException(
+            status_code=404,
+            detail=f"Rule not found for completed job {job_id}. The job completed but no rule was created. This may indicate a processing error."
+        )
+    
     return rule
 
 @router.put("/{rule_id}", response_model=RuleResponse)

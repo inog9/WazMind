@@ -19,6 +19,9 @@ function FileUpload({ onUpload, onJobCreated, files, pagination, onPageChange })
   const [draggedIndex, setDraggedIndex] = useState(null)
   const [dragOverIndex, setDragOverIndex] = useState(null)
   const [reorderedFiles, setReorderedFiles] = useState(null)
+  const [suggestedIds, setSuggestedIds] = useState(null)
+  const [loadingIds, setLoadingIds] = useState(false)
+  const [selectedRuleId, setSelectedRuleId] = useState(null)
   const fileInputRef = useRef(null)
 
   // Memoize display files to prevent unnecessary recalculations
@@ -93,13 +96,39 @@ function FileUpload({ onUpload, onJobCreated, files, pagination, onPageChange })
     }
   }, [file, clearMessages, onUpload])
 
-  const handleGenerate = useCallback(async (fileId) => {
+  // Fetch suggested rule IDs
+  const fetchSuggestedIds = useCallback(async () => {
+    setLoadingIds(true)
+    try {
+      const response = await apiClient.get('/api/wazuh/rules/id-suggestion', {
+        params: { count: 5 }
+      })
+      setSuggestedIds(response.data)
+      if (response.data.suggested_ids && response.data.suggested_ids.length > 0) {
+        setSelectedRuleId(response.data.suggested_ids[0]) // Auto-select first ID
+      }
+    } catch (error) {
+      console.error('Error fetching suggested IDs:', error)
+      toast.error('Failed to load available rule IDs')
+    } finally {
+      setLoadingIds(false)
+    }
+  }, [])
+
+  const handleGenerate = useCallback(async (fileId, ruleId = null) => {
     setGenerating(true)
     clearMessages()
     try {
-      const response = await apiClient.post('/api/jobs/generate', {
-        log_file_id: fileId,
-      })
+      const requestBody = {
+        log_file_id: fileId
+      }
+      
+      // Add rule_id if provided
+      if (ruleId) {
+        requestBody.rule_id = ruleId
+      }
+      
+      const response = await apiClient.post('/api/jobs/generate', requestBody)
       toast.success(`Rule generation job #${response.data.id} created! Processing in background...`)
       onJobCreated()
       
@@ -350,6 +379,86 @@ function FileUpload({ onUpload, onJobCreated, files, pagination, onPageChange })
               </div>
             </div>
           </div>
+
+          {/* Rule ID Suggestion Section - Show after file is uploaded */}
+          {selectedFileId && (
+            <div className="mt-4 backdrop-blur-sm border border-cyan-700/30 rounded-2xl p-6" style={{ backgroundColor: 'var(--bg-primary)' }}>
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h4 className="text-lg font-semibold text-cyan-200 mb-1">Custom Rule ID (Optional)</h4>
+                  <p className="text-sm text-cyan-200/60">Specify a rule ID between 100,000 - 120,000 for custom rules</p>
+                </div>
+                <button
+                  onClick={fetchSuggestedIds}
+                  disabled={loadingIds}
+                  className="px-4 py-2 rounded-lg border border-cyan-500/50 text-cyan-200 hover:bg-cyan-500/10 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2 transition-colors"
+                >
+                  {loadingIds ? (
+                    <>
+                      <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      <span>Loading...</span>
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                      </svg>
+                      <span>Get Available ID</span>
+                    </>
+                  )}
+                </button>
+              </div>
+              
+              {suggestedIds && suggestedIds.suggested_ids && suggestedIds.suggested_ids.length > 0 && (
+                <div className="space-y-3">
+                  <div className="flex flex-wrap gap-2">
+                    {suggestedIds.suggested_ids.map((id) => (
+                      <button
+                        key={id}
+                        onClick={() => setSelectedRuleId(id)}
+                        className={`px-4 py-2 rounded-lg font-mono text-sm font-semibold transition-all ${
+                          selectedRuleId === id
+                            ? 'bg-cyan-600/30 border-2 border-cyan-400 text-cyan-200 shadow-lg shadow-cyan-500/20'
+                            : 'bg-blue-600/20 border border-blue-500/30 text-blue-200 hover:bg-blue-600/30 hover:border-blue-400/50'
+                        }`}
+                      >
+                        {id.toLocaleString()}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-cyan-200/60">
+                      Available: <span className="text-cyan-300 font-semibold">{suggestedIds.available_count.toLocaleString()}</span> IDs remaining
+                    </span>
+                    {selectedRuleId && (
+                      <button
+                        onClick={() => setSelectedRuleId(null)}
+                        className="text-cyan-200/60 hover:text-cyan-200 transition-colors"
+                      >
+                        Clear selection
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
+              
+              {selectedRuleId && (
+                <div className="mt-4 p-3 rounded-lg bg-cyan-900/20 border border-cyan-500/30">
+                  <div className="flex items-center space-x-2">
+                    <svg className="w-5 h-5 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span className="text-sm text-cyan-200">
+                      Rule ID <span className="font-mono font-semibold text-cyan-300">{selectedRuleId.toLocaleString()}</span> will be used for the next generated rule
+                    </span>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Error/Success Messages */}
@@ -514,7 +623,7 @@ function FileUpload({ onUpload, onJobCreated, files, pagination, onPageChange })
                     </button>
                   </div>
                    <button
-                     onClick={() => handleGenerate(f.id)}
+                     onClick={() => handleGenerate(f.id, selectedRuleId)}
                      disabled={generating || deletingId === f.id}
                      className="bg-gradient-to-r from-blue-600 to-cyan-600 text-white py-3 px-6 rounded-xl hover:from-blue-500 hover:to-cyan-500 disabled:from-gray-600 disabled:to-gray-600 disabled:cursor-not-allowed text-sm font-semibold shadow-lg shadow-blue-600/30 transform hover:scale-105 active:scale-95 transition-all duration-200 flex items-center space-x-2"
                    >

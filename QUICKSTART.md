@@ -2,8 +2,9 @@
 
 ## Prerequisites
 
-- Docker & Docker Compose installed
+- Python 3.10+ and Node.js 18+
 - Groq API Key (get it from [Groq Console](https://console.groq.com/))
+- Auth0 Account (sign up at [auth0.com](https://auth0.com/))
 
 ## Setup Steps
 
@@ -12,20 +13,38 @@
    cd wazmind
    ```
 
-2. **Create environment file:**
+2. **Setup Environment Variables:**
+   
+   Copy `.env.example` to `.env` in root directory:
    ```bash
    cp .env.example .env
    ```
+   
+   Edit `.env` and fill in all values:
+   - `GROQ_API_KEY` - Your Groq API key
+   - `VITE_AUTH0_DOMAIN` - Your Auth0 domain
+   - `VITE_AUTH0_CLIENT_ID` - Your Auth0 client ID
+   
+   **Note:** Both backend and frontend read from the same `.env` file.
+   
+   See [AUTH0_SETUP.md](AUTH0_SETUP.md) for Auth0 configuration.
 
-3. **Edit `.env` and add your Groq API key:**
+4. **Install and Run:**
+   
+   **Backend:**
    ```bash
-   GROQ_API_KEY=your-actual-api-key-here
-   GROQ_MODEL=meta-llama/llama-4-scout-17b-16e-instruct
+   cd backend
+   python3 -m venv venv
+   source venv/bin/activate
+   pip install -r requirements.txt
+   uvicorn app.main:app --reload --port 8000
    ```
-
-4. **Start the application:**
+   
+   **Frontend (new terminal):**
    ```bash
-   docker-compose up --build
+   cd frontend
+   npm install
+   npm run dev
    ```
 
 5. **Access the application:**
@@ -35,18 +54,22 @@
 
 ## Usage
 
-1. **Upload a log file:**
-   - Go to "Upload Log" tab
-   - Select a log file (.log, .txt, .json, or .csv)
-   - Click "Upload File"
+1. **Sign In:**
+   - Click "Sign In" button on homepage
+   - Authenticate with Auth0 (Google, GitHub, or email)
 
-2. **Generate a rule:**
-   - After upload, click "Generate Rule" on the uploaded file
-   - Go to "Jobs" tab to see the generation status
-   - Wait for the job to complete (status will update automatically)
+2. **Upload a log file:**
+   - Drag & drop or browse to upload log file
+   - Supports .log, .txt, .json, and .csv formats
+   - File will appear in the list after upload
 
-3. **View and export rule:**
-   - Once job is completed, click "View Rule"
+3. **Generate a rule:**
+   - Click "Generate Rule" on the uploaded file
+   - Job status will appear in "Generation Jobs" section
+   - Wait for completion (status updates automatically)
+
+4. **View and export rule:**
+   - Once job is completed, click on the rule
    - Review the generated Wazuh rule XML
    - Edit if needed, then download or copy
 

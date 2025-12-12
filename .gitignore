@@ -73,5 +73,11 @@ build/
 *.temp
 .cache/
 
+# SSL Certificates (dev only)
+frontend/certs/
+*.pem
+*.key
+*.crt
+
 # Internal documentation
 PUBLIC_REPO_CHECKLIST.md

@@ -104,6 +104,14 @@ Panduan lengkap untuk menjalankan WazMind tanpa Docker untuk development lokal.
 
 ### Backend Issues
 
+1. **pip not found setelah aktivasi venv:**
+   ```bash
+   cd backend
+   rm -rf venv
+   python3 -m venv --upgrade-deps venv
+   source venv/bin/activate
+   python -m pip install -r requirements.txt
+   ```
 1. **Module not found:**
    ```bash
    # Pastikan virtual environment aktif
@@ -131,6 +139,12 @@ Panduan lengkap untuk menjalankan WazMind tanpa Docker untuk development lokal.
 
 ### Frontend Issues
 
+1. **ERR_MODULE_NOT_FOUND (vite cli hilang/corrupt):**
+   ```bash
+   cd frontend
+   rm -rf node_modules
+   npm install
+   ```
 1. **Port 5173 sudah digunakan:**
    ```bash
    # Vite akan otomatis menggunakan port berikutnya

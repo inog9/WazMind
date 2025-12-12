@@ -75,7 +75,16 @@ app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # CORS configuration
-ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "http://localhost:5173").split(",")
+# Default allows localhost (HTTP/HTTPS) and common development origins
+# Set ALLOWED_ORIGINS env var to override (comma-separated, e.g., "http://localhost:5173,https://158.220.110.105:5173")
+default_origins = [
+    "http://localhost:5173",
+    "https://localhost:5173",
+    "http://127.0.0.1:5173",
+    "https://127.0.0.1:5173",
+]
+ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", ",".join(default_origins)).split(",")
+ALLOWED_ORIGINS = [origin.strip() for origin in ALLOWED_ORIGINS if origin.strip()]  # Clean and filter empty
 
 app.add_middleware(
     CORSMiddleware,

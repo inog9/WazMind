@@ -142,6 +142,20 @@
 
 ## Troubleshooting
 
+- **Pip not found in venv:** Remove/recreate venv then reinstall deps:
+  ```bash
+  cd backend
+  rm -rf venv
+  python3 -m venv --upgrade-deps venv
+  source venv/bin/activate
+  python -m pip install -r requirements.txt
+  ```
+- **Node ERR_MODULE_NOT_FOUND (vite cli):** Reinstall frontend deps:
+  ```bash
+  cd frontend
+  rm -rf node_modules
+  npm install
+  ```
 - **API Key Error:** Make sure `GROQ_API_KEY` is set correctly in `.env`
 - **Port already in use:** Change ports in `docker-compose.yml`
 - **Database errors:** Delete `backend/data/app.db` and restart
